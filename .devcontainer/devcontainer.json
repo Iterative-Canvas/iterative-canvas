@@ -4,6 +4,7 @@
   "service": "node",
   "workspaceFolder": "/workspace",
   "containerEnv": {
+    // Try to resolve a warning being thrown by running `npx convex dev` in a docker container
     "CONVEX_TMPDIR": "/workspace/convex/.convex"
   },
   // "remoteUser": "node" or "root",
