@@ -1,0 +1,39 @@
+{
+  "name": "Node.js Development Container",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "node",
+  "workspaceFolder": "/workspace",
+  // "remoteUser": "node" or "root",
+  "mounts": [
+    "source=${localWorkspaceFolder}/.devcontainer/starship.toml,target=/root/.config/starship.toml,type=bind,consistency=cached,readonly"
+  ],
+  // 1. tree is useful to have in the environment so that you can easily provide your file structure to language models
+  // 2. starship is a nice prompt that shows useful information at a glance
+  "postCreateCommand": "apt-get update && apt-get install -y tree && curl -sS https://starship.rs/install.sh | sh -s -- --yes && echo 'eval \"$(starship init bash)\"' >> ~/.bashrc",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "csstools.postcss", // so that there's not a bunch of warnings in globals.css
+        "esbenp.prettier-vscode",
+        "dbaeumer.vscode-eslint",
+        "bradlc.vscode-tailwindcss",
+        "yoavbls.pretty-ts-errors"
+      ],
+      "settings": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true,
+        "eslint.format.enable": false,
+        "files.associations": {
+          // Associates all *.css files with Tailwind CSS mode for better syntax highlighting and IntelliSense
+          "*.css": "tailwindcss"
+        },
+        "editor.quickSuggestions": {
+          // Enables Tailwind autocomplete suggestions while typing inside string literals (e.g., className attributes)
+          "strings": "on"
+        },
+        // Enables Emmet-style completions for Tailwind classes, e.g., `div.bg-red-500.uppercase`
+        "tailwindCSS.emmetCompletions": true
+      }
+    }
+  }
+}
