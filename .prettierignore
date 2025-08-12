@@ -35,3 +35,6 @@ public/static
 
 # Ignore typescript cache
 *.tsbuildinfo
+
+# Convex
+**/.convex/

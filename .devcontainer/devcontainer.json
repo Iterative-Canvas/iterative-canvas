@@ -3,6 +3,9 @@
   "dockerComposeFile": "../docker-compose.yml",
   "service": "node",
   "workspaceFolder": "/workspace",
+  "containerEnv": {
+    "CONVEX_TMPDIR": "/workspace/convex/.convex"
+  },
   // "remoteUser": "node" or "root",
   "mounts": [
     "source=${localWorkspaceFolder}/.devcontainer/starship.toml,target=/root/.config/starship.toml,type=bind,consistency=cached,readonly"
