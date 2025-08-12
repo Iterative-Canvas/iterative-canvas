@@ -36,6 +36,16 @@
         },
         // Enables Emmet-style completions for Tailwind classes, e.g., `div.bg-red-500.uppercase`
         "tailwindCSS.emmetCompletions": true
+      },
+      "mcp": {
+        "servers": {
+          // https://docs.convex.dev/ai/using-github-copilot
+          "convex-mcp": {
+            "type": "stdio",
+            "command": "npx",
+            "args": ["-y", "convex@latest", "mcp", "start"]
+          }
+        }
       }
     }
   }
