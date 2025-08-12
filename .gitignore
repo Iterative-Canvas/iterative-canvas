@@ -32,6 +32,9 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# Don't ignore .env files ending in .example (e.g., .env.example, .env.production.example)
+!*.env.example
+!*.env.*.example
 
 # vercel
 .vercel
