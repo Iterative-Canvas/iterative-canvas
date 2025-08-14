@@ -852,7 +852,6 @@ export default function App() {
     setIsRunAllLoading(false)
   }
 
-  // blue-monkey
   return (
     <SidebarProvider>
       <AppSidebar />
