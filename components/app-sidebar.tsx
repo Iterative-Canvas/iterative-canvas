@@ -33,6 +33,7 @@ import {
   SidebarMenuSubItem,
   SidebarSeparator,
 } from "@/components/ui/sidebar"
+import { SignOutButton } from "./signout-button"
 
 // Sample data structure
 const actionItems = [
@@ -203,6 +204,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   {user.email}
                 </span>
               </div>
+              <SignOutButton className="ml-auto" />
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
