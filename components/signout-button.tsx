@@ -12,8 +12,6 @@ export function SignOutButton({ className }: { className?: string }) {
     <Button
       variant="ghost"
       size="icon"
-      // className="h-8 w-8"
-      // accept a className prop for custom styling and merge it with the default styles
       className={cn("h-8 w-8", className)}
       onClick={async () => {
         await signOut()
