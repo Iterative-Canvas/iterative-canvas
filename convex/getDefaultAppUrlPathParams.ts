@@ -22,16 +22,23 @@ export const getDefaultAppUrlPathParams = mutation({
       canvasId = canvas._id
 
       // 2. Get the current draft version for this canvas
-      const draft = await ctx.db
+      const drafts = await ctx.db
         .query("canvasVersions")
         .withIndex("canvasId_isDraft", (q) =>
           q.eq("canvasId", canvasId).eq("isDraft", true),
         )
-        .first()
+        // .first()
+        .collect()
 
-      if (!draft) {
+      if (drafts.length === 0) {
         throw new Error("Draft not found for canvas")
       }
+      if (drafts.length > 1) {
+        throw new Error("More than one draft version found for canvas")
+      }
+
+      const draft = drafts[0]
+
       if (!draft.parentVersionId) {
         throw new Error("Draft is not linked to a parent canvas version")
       }
