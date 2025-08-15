@@ -1,6 +1,6 @@
 "use client"
 
-import type * as React from "react"
+import { useState, ComponentProps } from "react"
 import {
   FileText,
   Folder,
@@ -9,7 +9,9 @@ import {
   Plus,
   Search,
 } from "lucide-react"
-
+import { useQuery } from "convex/react"
+import { api } from "../convex/_generated/api"
+import { Id } from "../convex/_generated/dataModel"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -104,8 +106,41 @@ const user = {
   avatar: "/placeholder.svg?height=32&width=32",
 }
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  return (
+export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
+  // I don't think the following is necessary. From what I can tell, useQuery will
+  // wait to fire until the user is authenticated all on it's own. Perhaps due to
+  // how it interacts with ConvexAuthNextjsProvider.
+  // const { isLoading, isAuthenticated } = useConvexAuth()
+
+  // Fetch canvases not in a folder
+  const foldersWithCanvases = useQuery(
+    api.public.getFoldersWithCanvases,
+    // See comment above about useConvexAuth()
+    // isAuthenticated ? {} : "skip",
+  )
+
+  // Track which folders are open
+  const [openFolders, setOpenFolders] = useState<
+    Record<Id<"folders">, boolean>
+  >({})
+
+  // Handler to toggle folder open/closed and fetch canvases if opening
+  const handleToggleFolder = async (folderId: Id<"folders">) => {
+    setOpenFolders((prev) => ({
+      ...prev,
+      [folderId]: !prev[folderId],
+    }))
+  }
+
+  // Note: Probably don't need this ChatGPT generated snippet below
+  // but keeping it around just in case.
+
+  // For SSR safety, only render after mount
+  // const [mounted, setMounted] = React.useState(false)
+  // React.useEffect(() => setMounted(true), [])
+  // if (!mounted) return null
+
+  return foldersWithCanvases ? (
     <Sidebar {...props}>
       <SidebarHeader>
         <div className="px-2 py-2">
@@ -209,5 +244,5 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
-  )
+  ) : null
 }
