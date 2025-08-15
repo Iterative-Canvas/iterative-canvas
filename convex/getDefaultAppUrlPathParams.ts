@@ -1,6 +1,6 @@
 import { mutation } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
-import { Doc, Id } from "./_generated/dataModel"
+import { Id } from "./_generated/dataModel"
 
 export const getDefaultAppUrlPathParams = mutation({
   args: {},
