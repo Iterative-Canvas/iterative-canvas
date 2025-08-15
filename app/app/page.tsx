@@ -1,19 +1,17 @@
-import { AppSidebar } from "@/components/app-sidebar"
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
+import { redirect } from "next/navigation"
+import { fetchQuery } from "convex/nextjs"
+import { api } from "@/convex/_generated/api"
+import { convexAuthNextjsToken } from "@convex-dev/auth/nextjs/server"
 
-export default function App() {
-  return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <div className="flex flex-1 items-center justify-center">
-            <h1 className="text-2xl font-bold">
-              Create a canvas to get started
-            </h1>
-          </div>
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+export default async function AppEntry() {
+  const token = await convexAuthNextjsToken() // auth token for Convex (server)
+  if (!token) redirect("/signin")
+
+  const { folderId, canvasId, versionId } = await fetchQuery(
+    api.getDefaultAppUrlPathParams.getDefaultAppUrlPathParams,
+    {},
+    { token },
   )
+
+  redirect(`/app/folder/${folderId}/canvas/${canvasId}/version/${versionId}`)
 }
