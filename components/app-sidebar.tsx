@@ -35,7 +35,6 @@ import {
 } from "@/components/ui/sidebar"
 import { SignOutButton } from "./signout-button"
 
-// Sample data structure
 const actionItems = [
   {
     title: "New Canvas",
