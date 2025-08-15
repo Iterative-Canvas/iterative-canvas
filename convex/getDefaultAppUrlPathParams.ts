@@ -27,7 +27,6 @@ export const getDefaultAppUrlPathParams = mutation({
         .withIndex("canvasId_isDraft", (q) =>
           q.eq("canvasId", canvasId).eq("isDraft", true),
         )
-        // .first()
         .collect()
 
       if (drafts.length === 0) {
