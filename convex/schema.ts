@@ -8,7 +8,7 @@ const schema = defineSchema({
   folders: defineTable({
     userId: v.id("users"),
     name: v.string(),
-  }).index("userId", ["userId"]),
+  }).index("userId_name", ["userId", "name"]),
 
   canvases: defineTable({
     userId: v.id("users"),
@@ -17,9 +17,8 @@ const schema = defineSchema({
     // Update this any time a canvas or any of it's child entities are modified
     lastModifiedTime: v.number(),
   })
-    .index("userId", ["userId"])
-    .index("folderId", ["folderId"])
-    .index("userId_lastModifiedTime", ["userId", "lastModifiedTime"]),
+    .index("userId_lastModifiedTime", ["userId", "lastModifiedTime"])
+    .index("folderId_lastModifiedTime", ["folderId", "lastModifiedTime"]),
 
   canvasVersions: defineTable({
     canvasId: v.id("canvases"),
@@ -33,8 +32,7 @@ const schema = defineSchema({
     response: v.optional(v.string()),
     successThreshold: v.optional(v.number()),
   })
-    .index("canvasId", ["canvasId"])
-    .index("parentVersionId", ["parentVersionId"])
+    // If we move to a branching model, then we'll probably want a parentVersionId index
     .index("canvasId_isDraft", ["canvasId", "isDraft"]),
 
   evals: defineTable({
@@ -52,12 +50,12 @@ const schema = defineSchema({
   roles: defineTable({
     name: v.string(),
     description: v.optional(v.string()),
-  }).index("name", ["name"]),
+  }),
 
   permissions: defineTable({
     name: v.string(),
     description: v.optional(v.string()),
-  }).index("name", ["name"]),
+  }),
 
   rolesPermissions: defineTable({
     roleId: v.id("roles"),

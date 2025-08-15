@@ -1,7 +1,62 @@
-import { mutation } from "./_generated/server"
+import { mutation, query } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
 import { Id } from "./_generated/dataModel"
 import { scaffoldNewCanvas } from "./helpers"
+import { v } from "convex/values"
+
+export const getCanvasesNotInFolder = query({
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+
+    return await ctx.db
+      .query("canvases")
+      .withIndex("userId_lastModifiedTime", (q) => q.eq("userId", userId))
+      .filter((q) => q.eq(q.field("folderId"), null))
+      .order("desc")
+      .collect()
+  },
+})
+
+export const getCanvasesByFolder = query({
+  args: {
+    folderId: v.id("folders"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+
+    const canvases = await ctx.db
+      .query("canvases")
+      .withIndex("folderId_lastModifiedTime", (q) =>
+        q.eq("folderId", args.folderId),
+      )
+      .order("desc")
+      .collect()
+
+    // Sanity check
+    const allSameUserId = canvases.every((canvas) => canvas.userId === userId)
+    if (!allSameUserId)
+      throw new Error(
+        "Data corruption detected. All canvases in a folder should belong to the same user.",
+      )
+
+    return canvases
+  },
+})
+
+export const getFolders = query({
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+
+    // Folders will be sorted alphabetically by default because of the userId_name index
+    return await ctx.db
+      .query("folders")
+      .withIndex("userId_name", (q) => q.eq("userId", userId))
+      .collect()
+  },
+})
 
 export const getDefaultAppUrlPathParams = mutation({
   args: {},
@@ -23,22 +78,16 @@ export const getDefaultAppUrlPathParams = mutation({
       canvasId = canvas._id
 
       // 2. Get the current draft version for this canvas
-      const drafts = await ctx.db
+      const draft = await ctx.db
         .query("canvasVersions")
         .withIndex("canvasId_isDraft", (q) =>
           q.eq("canvasId", canvasId).eq("isDraft", true),
         )
-        .collect()
+        .unique() // We expect there to only be one. Throws if more than one draft found.
 
-      if (drafts.length === 0) {
+      if (!draft) {
         throw new Error("Draft not found for canvas")
       }
-      if (drafts.length > 1) {
-        throw new Error("More than one draft version found for canvas")
-      }
-
-      const draft = drafts[0]
-
       if (!draft.parentVersionId) {
         throw new Error("Draft is not linked to a parent canvas version")
       }
