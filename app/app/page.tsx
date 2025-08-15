@@ -8,7 +8,7 @@ export default async function AppEntry() {
   if (!token) redirect("/signin")
 
   const { folderId, canvasId, versionId } = await fetchMutation(
-    api.getDefaultAppUrlPathParams.getDefaultAppUrlPathParams,
+    api.public.getDefaultAppUrlPathParams,
     {},
     { token },
   )

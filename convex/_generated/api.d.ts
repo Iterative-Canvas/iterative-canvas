@@ -14,8 +14,9 @@ import type {
   FunctionReference,
 } from "convex/server";
 import type * as auth from "../auth.js";
-import type * as getDefaultAppUrlPathParams from "../getDefaultAppUrlPathParams.js";
+import type * as helpers from "../helpers.js";
 import type * as http from "../http.js";
+import type * as public_ from "../public.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -27,8 +28,9 @@ import type * as http from "../http.js";
  */
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
-  getDefaultAppUrlPathParams: typeof getDefaultAppUrlPathParams;
+  helpers: typeof helpers;
   http: typeof http;
+  public: typeof public_;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,
