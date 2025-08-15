@@ -1,13 +1,13 @@
 import { redirect } from "next/navigation"
-import { fetchQuery } from "convex/nextjs"
+import { fetchMutation } from "convex/nextjs"
 import { api } from "@/convex/_generated/api"
 import { convexAuthNextjsToken } from "@convex-dev/auth/nextjs/server"
 
 export default async function AppEntry() {
-  const token = await convexAuthNextjsToken() // auth token for Convex (server)
+  const token = await convexAuthNextjsToken()
   if (!token) redirect("/signin")
 
-  const { folderId, canvasId, versionId } = await fetchQuery(
+  const { folderId, canvasId, versionId } = await fetchMutation(
     api.getDefaultAppUrlPathParams.getDefaultAppUrlPathParams,
     {},
     { token },
