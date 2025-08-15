@@ -59,21 +59,15 @@ const schema = defineSchema({
     description: v.optional(v.string()),
   }).index("name", ["name"]),
 
-  rolePermissions: defineTable({
+  rolesPermissions: defineTable({
     roleId: v.id("roles"),
     permissionId: v.id("permissions"),
-  })
-    .index("roleId", ["roleId"])
-    .index("permissionId", ["permissionId"])
-    .index("roleId_permissionId", ["roleId", "permissionId"]),
+  }).index("roleId_permissionId", ["roleId", "permissionId"]),
 
-  userRoles: defineTable({
+  usersRoles: defineTable({
     userId: v.id("users"),
     roleId: v.id("roles"),
-  })
-    .index("userId", ["userId"])
-    .index("roleId", ["roleId"])
-    .index("userId_roleId", ["userId", "roleId"]),
+  }).index("userId_roleId", ["userId", "roleId"]),
 })
 
 export default schema
