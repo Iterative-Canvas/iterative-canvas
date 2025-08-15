@@ -1,47 +1,60 @@
 import { mutation, query } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
-import { Id } from "./_generated/dataModel"
+import { Doc, Id } from "./_generated/dataModel"
 import { scaffoldNewCanvas } from "./helpers"
-import { v } from "convex/values"
 
-export const getCanvasesNotInFolder = query({
+export const getFoldersWithCanvases = query({
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx)
     if (!userId) throw new Error("Not authenticated")
 
-    return await ctx.db
-      .query("canvases")
-      .withIndex("userId_lastModifiedTime", (q) => q.eq("userId", userId))
-      .filter((q) => q.eq(q.field("folderId"), null))
-      .order("desc")
+    // Fetch all folders for the user.
+    // Folders will be sorted alphabetically by default because of the userId_name index.
+    const folders = await ctx.db
+      .query("folders")
+      .withIndex("userId_name", (q) => q.eq("userId", userId))
       .collect()
-  },
-})
 
-export const getCanvasesByFolder = query({
-  args: {
-    folderId: v.id("folders"),
-  },
-  handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx)
-    if (!userId) throw new Error("Not authenticated")
-
+    // Fetch all canvases for the user
     const canvases = await ctx.db
       .query("canvases")
-      .withIndex("folderId_lastModifiedTime", (q) =>
-        q.eq("folderId", args.folderId),
-      )
+      .withIndex("userId_lastModifiedTime", (q) => q.eq("userId", userId))
       .order("desc")
       .collect()
 
-    // Sanity check
-    const allSameUserId = canvases.every((canvas) => canvas.userId === userId)
-    if (!allSameUserId)
-      throw new Error(
-        "Data corruption detected. All canvases in a folder should belong to the same user.",
-      )
+    // Group canvases by folderId (null for root)
+    const folderMap = new Map<Id<"folders"> | null, Array<Doc<"canvases">>>()
 
-    return canvases
+    for (const canvas of canvases) {
+      const key = canvas.folderId ?? null
+      if (!folderMap.has(key)) folderMap.set(key, [])
+      folderMap.get(key)!.push(canvas)
+    }
+
+    // Build the result array
+    const result: Array<{
+      folderId: Id<"folders"> | null
+      folderName: string | "root"
+      canvases: Array<Doc<"canvases">>
+    }> = []
+
+    // Root folder first
+    result.push({
+      folderId: null,
+      folderName: "root",
+      canvases: folderMap.get(null) ?? [],
+    })
+
+    // Other folders
+    for (const folder of folders) {
+      result.push({
+        folderId: folder._id,
+        folderName: folder.name,
+        canvases: folderMap.get(folder._id) ?? [],
+      })
+    }
+
+    return result
   },
 })
 
@@ -105,5 +118,14 @@ export const getDefaultAppUrlPathParams = mutation({
       canvasId,
       versionId,
     }
+  },
+})
+
+export const createNewCanvas = mutation({
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+
+    return await scaffoldNewCanvas(ctx, userId)
   },
 })

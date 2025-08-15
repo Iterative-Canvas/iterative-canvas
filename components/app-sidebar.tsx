@@ -1,24 +1,11 @@
 "use client"
 
 import { useState, ComponentProps } from "react"
-import {
-  FileText,
-  Folder,
-  FolderPlus,
-  MoreHorizontal,
-  Plus,
-  Search,
-} from "lucide-react"
+import { FileText, Folder, FolderPlus, Plus, Search } from "lucide-react"
 import { useQuery } from "convex/react"
 import { api } from "../convex/_generated/api"
 import { Id } from "../convex/_generated/dataModel"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import {
   Sidebar,
   SidebarContent,
@@ -27,7 +14,6 @@ import {
   SidebarGroupContent,
   SidebarHeader,
   SidebarMenu,
-  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarMenuSub,
@@ -52,51 +38,6 @@ const actionItems = [
     title: "Search",
     icon: Search,
     action: () => console.log("Search"),
-  },
-]
-
-const filesAndFolders = [
-  {
-    title: "Vacation",
-    icon: FileText,
-    type: "file",
-  },
-  {
-    title: "Groceries, Shopping, and Errands",
-    icon: FileText,
-    type: "file",
-  },
-  {
-    title: "Lesson Plan",
-    icon: FileText,
-    type: "file",
-    isActive: true,
-    hasMenu: true,
-  },
-  {
-    title: "Work Project",
-    icon: FileText,
-    type: "file",
-  },
-  {
-    title: "Workouts",
-    icon: Folder,
-    type: "folder",
-  },
-  {
-    title: "Nutrition",
-    icon: Folder,
-    type: "folder",
-    children: [
-      {
-        title: "Lunches",
-        icon: FileText,
-      },
-      {
-        title: "Dinners",
-        icon: FileText,
-      },
-    ],
   },
 ]
 
@@ -131,6 +72,10 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
       [folderId]: !prev[folderId],
     }))
   }
+
+  // Separate root and folders
+  const root = foldersWithCanvases?.find((f) => f.folderId === null)
+  const folders = foldersWithCanvases?.filter((f) => f.folderId !== null) ?? []
 
   // Note: Probably don't need this ChatGPT generated snippet below
   // but keeping it around just in case.
@@ -168,52 +113,98 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
 
         <SidebarSeparator />
 
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {filesAndFolders.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton isActive={item.isActive}>
-                    <item.icon className="h-4 w-4" />
-                    <span>{item.title}</span>
-                  </SidebarMenuButton>
-                  {item.hasMenu && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <SidebarMenuAction>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </SidebarMenuAction>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent side="right" align="start">
-                        <DropdownMenuItem>
-                          <span>Rename</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <span>Duplicate</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <span>Delete</span>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
-                  {item.children && (
-                    <SidebarMenuSub>
-                      {item.children.map((child) => (
-                        <SidebarMenuSubItem key={child.title}>
-                          <SidebarMenuSubButton>
-                            <child.icon className="h-4 w-4" />
-                            <span>{child.title}</span>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      ))}
-                    </SidebarMenuSub>
-                  )}
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {/* Folders */}
+        {folders.length > 0 && (
+          <>
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {folders.map((folder) => (
+                    <SidebarMenuItem key={folder.folderId as string}>
+                      <SidebarMenuButton
+                        // The `peer` className works in tandem with the commented
+                        // out dropdown menu below.
+                        className="peer"
+                        onClick={() =>
+                          handleToggleFolder(folder.folderId as Id<"folders">)
+                        }
+                        aria-expanded={
+                          !!openFolders[folder.folderId as Id<"folders">]
+                        }
+                      >
+                        <Folder className="h-4 w-4" />
+                        <span>{folder.folderName}</span>
+                      </SidebarMenuButton>
+                      {/* TODO: This is being glitchy for some reason */}
+                      {/* <div className="invisible peer-hover:visible">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <SidebarMenuAction>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </SidebarMenuAction>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent side="right" align="start">
+                            <DropdownMenuItem>
+                              <span>Rename</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <span>Duplicate</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <span>Delete</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div> */}
+                      {openFolders[folder.folderId as Id<"folders">] &&
+                        folder.canvases.length > 0 && (
+                          <SidebarMenuSub>
+                            {folder.canvases.map((canvas) => (
+                              <SidebarMenuSubItem key={canvas._id}>
+                                <SidebarMenuSubButton>
+                                  <FileText className="h-4 w-4" />
+                                  <span>
+                                    {canvas.name ?? "Untitled Canvas"}
+                                  </span>
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                            ))}
+                          </SidebarMenuSub>
+                        )}
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+            <SidebarSeparator />
+          </>
+        )}
+
+        {/* Canvases not in a folder (root) */}
+        {root && root.canvases.length > 0 ? (
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {root.canvases.map((canvas) => (
+                  <SidebarMenuItem key={canvas._id}>
+                    <SidebarMenuButton>
+                      <FileText className="h-4 w-4" />
+                      <span>{canvas.name ?? "Untitled Canvas"}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ) : (
+          <SidebarGroup>
+            <SidebarGroupContent className="mt-12 text-center italic">
+              {folders.length === 0
+                ? "Create a canvas to get started"
+                : "You do not have any root-level canvases"}
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter>
