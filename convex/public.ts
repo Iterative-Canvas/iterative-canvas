@@ -2,6 +2,7 @@ import { mutation, query } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
 import { Doc, Id } from "./_generated/dataModel"
 import { scaffoldNewCanvas } from "./helpers"
+import { v } from "convex/values"
 
 export const getFoldersWithCanvases = query({
   handler: async (ctx) => {
@@ -127,5 +128,15 @@ export const createNewCanvas = mutation({
     if (!userId) throw new Error("Not authenticated")
 
     return await scaffoldNewCanvas(ctx, userId)
+  },
+})
+
+export const createNewFolder = mutation({
+  args: { name: v.string() },
+  handler: async (ctx, { name }) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+
+    return await ctx.db.insert("folders", { userId, name })
   },
 })

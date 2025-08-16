@@ -1,8 +1,8 @@
 "use client"
 
 import { useState, ComponentProps } from "react"
-import { FileText, Folder, FolderPlus, Plus, Search } from "lucide-react"
-import { useQuery } from "convex/react"
+import { FileText, Folder, FolderPlus, Ghost, Plus, Search } from "lucide-react"
+import { useMutation, useQuery } from "convex/react"
 import { api } from "../convex/_generated/api"
 import { Id } from "../convex/_generated/dataModel"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -22,24 +22,7 @@ import {
   SidebarSeparator,
 } from "@/components/ui/sidebar"
 import { SignOutButton } from "./signout-button"
-
-const actionItems = [
-  {
-    title: "New Canvas",
-    icon: Plus,
-    action: () => console.log("New Canvas"),
-  },
-  {
-    title: "New Folder",
-    icon: FolderPlus,
-    action: () => console.log("New Folder"),
-  },
-  {
-    title: "Search",
-    icon: Search,
-    action: () => console.log("Search"),
-  },
-]
+import { useRouter, useParams } from "next/navigation"
 
 const user = {
   name: "John Munson",
@@ -48,6 +31,12 @@ const user = {
 }
 
 export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
+  const router = useRouter()
+  const { folderId: activeFolderId, canvasId: activeCanvasId } = useParams<{
+    folderId: string
+    canvasId: string
+  }>()
+
   // I don't think the following is necessary. From what I can tell, useQuery will
   // wait to fire until the user is authenticated all on it's own. Perhaps due to
   // how it interacts with ConvexAuthNextjsProvider.
@@ -60,10 +49,22 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
     // isAuthenticated ? {} : "skip",
   )
 
+  const newCanvasMutation = useMutation(api.public.createNewCanvas)
+  const newFolderMutation = useMutation(api.public.createNewFolder)
+
+  const createNewCanvas = async () => {
+    const { canvasId, versionId } = await newCanvasMutation()
+    router.push(`/app/folder/root/canvas/${canvasId}/version/${versionId}`)
+  }
+
+  const createNewFolder = (name: string) => {
+    newFolderMutation({ name })
+  }
+
   // Track which folders are open
   const [openFolders, setOpenFolders] = useState<
     Record<Id<"folders">, boolean>
-  >({})
+  >(activeFolderId === "root" ? {} : { [activeFolderId]: true })
 
   // Handler to toggle folder open/closed and fetch canvases if opening
   const handleToggleFolder = async (folderId: Id<"folders">) => {
@@ -99,14 +100,33 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {actionItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton onClick={item.action}>
-                    <item.icon className="h-4 w-4" />
-                    <span>{item.title}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  className="cursor-pointer"
+                  onClick={createNewCanvas}
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>New Canvas</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  className="cursor-pointer"
+                  onClick={() => {}}
+                >
+                  <FolderPlus className="h-4 w-4" />
+                  <span>New Folder</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  className="cursor-pointer"
+                  onClick={() => {}}
+                >
+                  <Search className="h-4 w-4" />
+                  <span>Search</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -124,7 +144,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
                       <SidebarMenuButton
                         // The `peer` className works in tandem with the commented
                         // out dropdown menu below.
-                        className="peer"
+                        className="peer cursor-pointer"
                         onClick={() =>
                           handleToggleFolder(folder.folderId as Id<"folders">)
                         }
@@ -156,21 +176,34 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div> */}
-                      {openFolders[folder.folderId as Id<"folders">] &&
-                        folder.canvases.length > 0 && (
-                          <SidebarMenuSub>
-                            {folder.canvases.map((canvas) => (
+                      {openFolders[folder.folderId as Id<"folders">] && (
+                        <SidebarMenuSub>
+                          {folder.canvases.length ? (
+                            folder.canvases.map((canvas) => (
                               <SidebarMenuSubItem key={canvas._id}>
-                                <SidebarMenuSubButton>
+                                <SidebarMenuSubButton
+                                  isActive={canvas._id === activeCanvasId}
+                                  className="cursor-pointer"
+                                >
                                   <FileText className="h-4 w-4" />
                                   <span>
                                     {canvas.name ?? "Untitled Canvas"}
                                   </span>
                                 </SidebarMenuSubButton>
                               </SidebarMenuSubItem>
-                            ))}
-                          </SidebarMenuSub>
-                        )}
+                            ))
+                          ) : (
+                            <SidebarMenuSubItem>
+                              <SidebarMenuSubButton aria-disabled>
+                                <Ghost className="h-4 w-4" />
+                                <span className="italic pr-2">
+                                  Empty Folder
+                                </span>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          )}
+                        </SidebarMenuSub>
+                      )}
                     </SidebarMenuItem>
                   ))}
                 </SidebarMenu>
@@ -187,7 +220,10 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
               <SidebarMenu>
                 {root.canvases.map((canvas) => (
                   <SidebarMenuItem key={canvas._id}>
-                    <SidebarMenuButton>
+                    <SidebarMenuButton
+                      isActive={canvas._id === activeCanvasId}
+                      className="cursor-pointer"
+                    >
                       <FileText className="h-4 w-4" />
                       <span>{canvas.name ?? "Untitled Canvas"}</span>
                     </SidebarMenuButton>
@@ -210,7 +246,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton className="h-12">
+            <SidebarMenuButton className="h-12 cursor-pointer">
               <Avatar className="h-8 w-8">
                 <AvatarImage
                   src={user.avatar || "/placeholder.svg"}
