@@ -1,4 +1,3 @@
-// helper functions go here
 import { MutationCtx } from "./_generated/server"
 import { Id } from "./_generated/dataModel"
 
