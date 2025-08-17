@@ -1,19 +1,12 @@
 {
   "name": "Node.js Development Container",
-  "dockerComposeFile": "../docker-compose.yml",
+  "dockerComposeFile": "./docker-compose.yml",
   "service": "node",
   "workspaceFolder": "/workspace",
-  "containerEnv": {
-    // Try to resolve a warning being thrown by running `npx convex dev` in a docker container
-    "CONVEX_TMPDIR": "/workspace/.convex"
-  },
   // "remoteUser": "node" or "root",
   "mounts": [
     "source=${localWorkspaceFolder}/.devcontainer/starship.toml,target=/root/.config/starship.toml,type=bind,consistency=cached,readonly"
   ],
-  // 1. tree is useful to have in the environment so that you can easily provide your file structure to language models
-  // 2. starship is a nice prompt that shows useful information at a glance
-  "postCreateCommand": "apt-get update && apt-get install -y tree && curl -sS https://starship.rs/install.sh | sh -s -- --yes && echo 'eval \"$(starship init bash)\"' >> ~/.bashrc",
   "customizations": {
     "vscode": {
       "extensions": [
