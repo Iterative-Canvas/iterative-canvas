@@ -6,6 +6,15 @@ import { useMutation, useQuery } from "convex/react"
 import { api } from "../convex/_generated/api"
 import { Id } from "../convex/_generated/dataModel"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   Sidebar,
   SidebarContent,
@@ -37,6 +46,9 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
     canvasId: string
   }>()
 
+  const [showNewFolderModal, setShowNewFolderModal] = useState(false)
+  const [newFolderName, setNewFolderName] = useState("")
+
   // I don't think the following is necessary. From what I can tell, useQuery will
   // wait to fire until the user is authenticated all on it's own. Perhaps due to
   // how it interacts with ConvexAuthNextjsProvider.
@@ -57,8 +69,24 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
     router.push(`/app/folder/root/canvas/${canvasId}/version/${versionId}`)
   }
 
-  const createNewFolder = (name: string) => {
-    newFolderMutation({ name })
+  const createNewFolder = async (name: string) => {
+    await newFolderMutation({ name })
+  }
+
+  const handleOpenNewFolderModal = () => {
+    setShowNewFolderModal(true)
+    setNewFolderName("")
+  }
+
+  const handleCloseNewFolderModal = () => {
+    setShowNewFolderModal(false)
+    setNewFolderName("")
+  }
+
+  const handleConfirmNewFolder = async () => {
+    if (!newFolderName.trim()) return
+    await createNewFolder(newFolderName.trim())
+    handleCloseNewFolderModal()
   }
 
   // Track which folders are open
@@ -87,76 +115,77 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
   // if (!mounted) return null
 
   return foldersWithCanvases ? (
-    <Sidebar {...props}>
-      <SidebarHeader>
-        <div className="px-2 py-2">
-          <h1 className="text-lg font-semibold text-sidebar-foreground">
-            Iterative Canvas
-          </h1>
-        </div>
-      </SidebarHeader>
+    <>
+      <Sidebar {...props}>
+        <SidebarHeader>
+          <div className="px-2 py-2">
+            <h1 className="text-lg font-semibold text-sidebar-foreground">
+              Iterative Canvas
+            </h1>
+          </div>
+        </SidebarHeader>
 
-      <SidebarContent className="overflow-x-hidden overflow-y-auto">
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  className="cursor-pointer"
-                  onClick={createNewCanvas}
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>New Canvas</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  className="cursor-pointer"
-                  onClick={() => {}}
-                >
-                  <FolderPlus className="h-4 w-4" />
-                  <span>New Folder</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  className="cursor-pointer"
-                  onClick={() => {}}
-                >
-                  <Search className="h-4 w-4" />
-                  <span>Search</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        <SidebarContent className="overflow-x-hidden overflow-y-auto">
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    className="cursor-pointer"
+                    onClick={createNewCanvas}
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>New Canvas</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    className="cursor-pointer"
+                    onClick={handleOpenNewFolderModal}
+                  >
+                    <FolderPlus className="h-4 w-4" />
+                    <span>New Folder</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    className="cursor-pointer"
+                    onClick={() => {}}
+                  >
+                    <Search className="h-4 w-4" />
+                    <span>Search</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
 
-        <SidebarSeparator />
+          <SidebarSeparator />
 
-        {/* Folders */}
-        {folders.length > 0 && (
-          <>
-            <SidebarGroup>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {folders.map((folder) => (
-                    <SidebarMenuItem key={folder.folderId as string}>
-                      <SidebarMenuButton
-                        // The `peer` className works in tandem with the commented
-                        // out dropdown menu below.
-                        className="peer cursor-pointer"
-                        onClick={() =>
-                          handleToggleFolder(folder.folderId as Id<"folders">)
-                        }
-                        aria-expanded={
-                          !!openFolders[folder.folderId as Id<"folders">]
-                        }
-                      >
-                        <Folder className="h-4 w-4" />
-                        <span>{folder.folderName}</span>
-                      </SidebarMenuButton>
-                      {/* TODO: This is being glitchy for some reason */}
-                      {/* <div className="invisible peer-hover:visible">
+          {/* Folders */}
+          {folders.length > 0 && (
+            <>
+              <SidebarGroup>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {folders.map((folder) => (
+                      <SidebarMenuItem key={folder.folderId as string}>
+                        <SidebarMenuButton
+                          // The `peer` className works in tandem with the commented
+                          // out dropdown menu below.
+                          className="peer cursor-pointer"
+                          onClick={() =>
+                            handleToggleFolder(folder.folderId as Id<"folders">)
+                          }
+                          aria-expanded={
+                            !!openFolders[folder.folderId as Id<"folders">]
+                          }
+                        >
+                          <Folder className="h-4 w-4" />
+                          <span>{folder.folderName}</span>
+                        </SidebarMenuButton>
+                        {/* TODO: This is being glitchy for some reason */}
+                        {/* <div className="invisible peer-hover:visible">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <SidebarMenuAction>
@@ -176,100 +205,130 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div> */}
-                      {openFolders[folder.folderId as Id<"folders">] && (
-                        <SidebarMenuSub>
-                          {folder.canvases.length ? (
-                            folder.canvases.map((canvas) => (
-                              <SidebarMenuSubItem key={canvas._id}>
-                                <SidebarMenuSubButton
-                                  isActive={canvas._id === activeCanvasId}
-                                  className="cursor-pointer"
-                                >
-                                  <FileText className="h-4 w-4" />
-                                  <span>
-                                    {canvas.name ?? "Untitled Canvas"}
+                        {openFolders[folder.folderId as Id<"folders">] && (
+                          <SidebarMenuSub>
+                            {folder.canvases.length ? (
+                              folder.canvases.map((canvas) => (
+                                <SidebarMenuSubItem key={canvas._id}>
+                                  <SidebarMenuSubButton
+                                    isActive={canvas._id === activeCanvasId}
+                                    className="cursor-pointer"
+                                  >
+                                    <FileText className="h-4 w-4" />
+                                    <span>
+                                      {canvas.name ?? "Untitled Canvas"}
+                                    </span>
+                                  </SidebarMenuSubButton>
+                                </SidebarMenuSubItem>
+                              ))
+                            ) : (
+                              <SidebarMenuSubItem>
+                                <SidebarMenuSubButton aria-disabled>
+                                  <Ghost className="h-4 w-4" />
+                                  <span className="italic pr-2">
+                                    Empty Folder
                                   </span>
                                 </SidebarMenuSubButton>
                               </SidebarMenuSubItem>
-                            ))
-                          ) : (
-                            <SidebarMenuSubItem>
-                              <SidebarMenuSubButton aria-disabled>
-                                <Ghost className="h-4 w-4" />
-                                <span className="italic pr-2">
-                                  Empty Folder
-                                </span>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                          )}
-                        </SidebarMenuSub>
-                      )}
+                            )}
+                          </SidebarMenuSub>
+                        )}
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+              <SidebarSeparator />
+            </>
+          )}
+
+          {/* Canvases not in a folder (root) */}
+          {root && root.canvases.length > 0 ? (
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {root.canvases.map((canvas) => (
+                    <SidebarMenuItem key={canvas._id}>
+                      <SidebarMenuButton
+                        isActive={canvas._id === activeCanvasId}
+                        className="cursor-pointer"
+                      >
+                        <FileText className="h-4 w-4" />
+                        <span>{canvas.name ?? "Untitled Canvas"}</span>
+                      </SidebarMenuButton>
                     </SidebarMenuItem>
                   ))}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
-            <SidebarSeparator />
-          </>
-        )}
+          ) : (
+            <SidebarGroup>
+              <SidebarGroupContent className="mt-12 text-center italic">
+                {folders.length === 0
+                  ? "Create a canvas to get started"
+                  : "You do not have any root-level canvases"}
+              </SidebarGroupContent>
+            </SidebarGroup>
+          )}
+        </SidebarContent>
 
-        {/* Canvases not in a folder (root) */}
-        {root && root.canvases.length > 0 ? (
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {root.canvases.map((canvas) => (
-                  <SidebarMenuItem key={canvas._id}>
-                    <SidebarMenuButton
-                      isActive={canvas._id === activeCanvasId}
-                      className="cursor-pointer"
-                    >
-                      <FileText className="h-4 w-4" />
-                      <span>{canvas.name ?? "Untitled Canvas"}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ) : (
-          <SidebarGroup>
-            <SidebarGroupContent className="mt-12 text-center italic">
-              {folders.length === 0
-                ? "Create a canvas to get started"
-                : "You do not have any root-level canvases"}
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-      </SidebarContent>
-
-      <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton className="h-12 cursor-pointer">
-              <Avatar className="h-8 w-8">
-                <AvatarImage
-                  src={user.avatar || "/placeholder.svg"}
-                  alt={user.name}
-                />
-                <AvatarFallback>
-                  {user.name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex flex-col items-start text-left">
-                <span className="text-sm font-medium">{user.name}</span>
-                <span className="text-xs text-muted-foreground">
-                  {user.email}
-                </span>
-              </div>
-              <SignOutButton className="ml-auto" />
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
-    </Sidebar>
+        <SidebarFooter>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton className="h-12 cursor-pointer">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage
+                    src={user.avatar || "/placeholder.svg"}
+                    alt={user.name}
+                  />
+                  <AvatarFallback>
+                    {user.name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col items-start text-left">
+                  <span className="text-sm font-medium">{user.name}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {user.email}
+                  </span>
+                </div>
+                <SignOutButton className="ml-auto" />
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
+      </Sidebar>
+      <Dialog open={showNewFolderModal} onOpenChange={setShowNewFolderModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>New Folder</DialogTitle>
+          </DialogHeader>
+          <Input
+            autoFocus
+            placeholder="Folder name"
+            value={newFolderName}
+            onChange={(e) => setNewFolderName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && newFolderName.trim()) {
+                handleConfirmNewFolder()
+              }
+            }}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCloseNewFolderModal}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmNewFolder}
+              disabled={!newFolderName.trim()}
+            >
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   ) : null
 }
