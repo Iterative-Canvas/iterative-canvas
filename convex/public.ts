@@ -59,19 +59,6 @@ export const getFoldersWithCanvases = query({
   },
 })
 
-export const getFolders = query({
-  handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx)
-    if (!userId) throw new Error("Not authenticated")
-
-    // Folders will be sorted alphabetically by default because of the userId_name index
-    return await ctx.db
-      .query("folders")
-      .withIndex("userId_name", (q) => q.eq("userId", userId))
-      .collect()
-  },
-})
-
 export const getDefaultAppUrlPathParams = mutation({
   args: {},
   handler: async (ctx) => {
@@ -138,5 +125,41 @@ export const createNewFolder = mutation({
     if (!userId) throw new Error("Not authenticated")
 
     return await ctx.db.insert("folders", { userId, name })
+  },
+})
+
+export const getCurrentUser = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+
+    const user = await ctx.db.get(userId)
+
+    if (!user) throw new Error("User not found")
+
+    return user
+  },
+})
+
+export const getActiveVersionIdForCanvas = query({
+  args: { canvasId: v.id("canvases") },
+  handler: async (ctx, { canvasId }) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+
+    // Find the draft version for this canvas
+    const draft = await ctx.db
+      .query("canvasVersions")
+      .withIndex("canvasId_isDraft", (q) =>
+        q.eq("canvasId", canvasId).eq("isDraft", true),
+      )
+      .unique() // Throws if more than one draft found
+
+    if (!draft) throw new Error("Draft not found for canvas")
+    if (!draft.parentVersionId)
+      throw new Error("Draft is not linked to a parent canvas version")
+
+    return { versionId: draft.parentVersionId }
   },
 })

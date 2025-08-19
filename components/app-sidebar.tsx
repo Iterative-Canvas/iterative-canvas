@@ -1,8 +1,13 @@
 "use client"
 
-import { useState, ComponentProps } from "react"
+import { ComponentProps } from "react"
 import { FileText, Folder, FolderPlus, Ghost, Plus, Search } from "lucide-react"
-import { useMutation, useQuery } from "convex/react"
+import {
+  useMutation,
+  usePreloadedQuery,
+  Preloaded,
+  useConvex,
+} from "convex/react"
 import { api } from "../convex/_generated/api"
 import { Id } from "../convex/_generated/dataModel"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -31,35 +36,31 @@ import {
   SidebarSeparator,
 } from "@/components/ui/sidebar"
 import { SignOutButton } from "./signout-button"
-import { useRouter, useParams } from "next/navigation"
+import { useRouter } from "next/navigation"
+import { useAppContext } from "@/providers/AppProvider"
 
-const user = {
-  name: "John Munson",
-  email: "john@gmail.com",
-  avatar: "/placeholder.svg?height=32&width=32",
-}
-
-export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
+export function AppSidebar({
+  activeFolderId,
+  activeCanvasId,
+  activeVersionId,
+  preloadedFoldersWithCanvases,
+  preloadedCurrentUser,
+  ...props
+}: {
+  activeFolderId: string
+  activeCanvasId: string
+  activeVersionId: string
+  preloadedFoldersWithCanvases: Preloaded<
+    typeof api.public.getFoldersWithCanvases
+  >
+  preloadedCurrentUser: Preloaded<typeof api.public.getCurrentUser>
+} & ComponentProps<typeof Sidebar>) {
+  const convex = useConvex()
   const router = useRouter()
-  const { folderId: activeFolderId, canvasId: activeCanvasId } = useParams<{
-    folderId: string
-    canvasId: string
-  }>()
+  const { state, dispatch } = useAppContext()
 
-  const [showNewFolderModal, setShowNewFolderModal] = useState(false)
-  const [newFolderName, setNewFolderName] = useState("")
-
-  // I don't think the following is necessary. From what I can tell, useQuery will
-  // wait to fire until the user is authenticated all on it's own. Perhaps due to
-  // how it interacts with ConvexAuthNextjsProvider.
-  // const { isLoading, isAuthenticated } = useConvexAuth()
-
-  // Fetch canvases not in a folder
-  const foldersWithCanvases = useQuery(
-    api.public.getFoldersWithCanvases,
-    // See comment above about useConvexAuth()
-    // isAuthenticated ? {} : "skip",
-  )
+  const foldersWithCanvases = usePreloadedQuery(preloadedFoldersWithCanvases)
+  const currentUser = usePreloadedQuery(preloadedCurrentUser)
 
   const newCanvasMutation = useMutation(api.public.createNewCanvas)
   const newFolderMutation = useMutation(api.public.createNewFolder)
@@ -73,33 +74,26 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
     await newFolderMutation({ name })
   }
 
-  const handleOpenNewFolderModal = () => {
-    setShowNewFolderModal(true)
-    setNewFolderName("")
-  }
-
-  const handleCloseNewFolderModal = () => {
-    setShowNewFolderModal(false)
-    setNewFolderName("")
-  }
-
   const handleConfirmNewFolder = async () => {
-    if (!newFolderName.trim()) return
-    await createNewFolder(newFolderName.trim())
-    handleCloseNewFolderModal()
+    if (!state.newFolderName.trim()) return
+    await createNewFolder(state.newFolderName.trim())
+    dispatch({ type: "CLOSE_NEW_FOLDER_MODAL" })
   }
 
-  // Track which folders are open
-  const [openFolders, setOpenFolders] = useState<
-    Record<Id<"folders">, boolean>
-  >(activeFolderId === "root" ? {} : { [activeFolderId]: true })
+  const handleCanvasSelect = async (
+    folderId: Id<"folders">,
+    canvasId: Id<"canvases">,
+  ) => {
+    const { versionId } = await convex.query(
+      api.public.getActiveVersionIdForCanvas,
+      {
+        canvasId,
+      },
+    )
 
-  // Handler to toggle folder open/closed and fetch canvases if opening
-  const handleToggleFolder = async (folderId: Id<"folders">) => {
-    setOpenFolders((prev) => ({
-      ...prev,
-      [folderId]: !prev[folderId],
-    }))
+    router.push(
+      `/app/folder/${folderId}/canvas/${canvasId}/version/${versionId}`,
+    )
   }
 
   // Separate root and folders
@@ -114,7 +108,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
   // React.useEffect(() => setMounted(true), [])
   // if (!mounted) return null
 
-  return foldersWithCanvases ? (
+  return (
     <>
       <Sidebar {...props}>
         <SidebarHeader>
@@ -141,7 +135,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     className="cursor-pointer"
-                    onClick={handleOpenNewFolderModal}
+                    onClick={() => dispatch({ type: "OPEN_NEW_FOLDER_MODAL" })}
                   >
                     <FolderPlus className="h-4 w-4" />
                     <span>New Folder</span>
@@ -175,10 +169,15 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
                           // out dropdown menu below.
                           className="peer cursor-pointer"
                           onClick={() =>
-                            handleToggleFolder(folder.folderId as Id<"folders">)
+                            dispatch({
+                              type: "TOGGLE_FOLDER",
+                              payload: folder.folderId as Id<"folders">,
+                            })
                           }
                           aria-expanded={
-                            !!openFolders[folder.folderId as Id<"folders">]
+                            !!state.openFolders[
+                              folder.folderId as Id<"folders">
+                            ]
                           }
                         >
                           <Folder className="h-4 w-4" />
@@ -205,13 +204,21 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div> */}
-                        {openFolders[folder.folderId as Id<"folders">] && (
+                        {state.openFolders[
+                          folder.folderId as Id<"folders">
+                        ] && (
                           <SidebarMenuSub>
                             {folder.canvases.length ? (
                               folder.canvases.map((canvas) => (
                                 <SidebarMenuSubItem key={canvas._id}>
                                   <SidebarMenuSubButton
                                     isActive={canvas._id === activeCanvasId}
+                                    onClick={() =>
+                                      handleCanvasSelect(
+                                        folder.folderId!,
+                                        canvas._id,
+                                      )
+                                    }
                                     className="cursor-pointer"
                                   >
                                     <FileText className="h-4 w-4" />
@@ -251,6 +258,12 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
                     <SidebarMenuItem key={canvas._id}>
                       <SidebarMenuButton
                         isActive={canvas._id === activeCanvasId}
+                        onClick={() =>
+                          handleCanvasSelect(
+                            "root" as Id<"folders">,
+                            canvas._id,
+                          )
+                        }
                         className="cursor-pointer"
                       >
                         <FileText className="h-4 w-4" />
@@ -278,20 +291,24 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
               <SidebarMenuButton className="h-12 cursor-pointer">
                 <Avatar className="h-8 w-8">
                   <AvatarImage
-                    src={user.avatar || "/placeholder.svg"}
-                    alt={user.name}
+                    src={currentUser.image || "/placeholder.svg"}
+                    alt={currentUser.name}
                   />
                   <AvatarFallback>
-                    {user.name
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")}
+                    {currentUser.name
+                      ? currentUser.name
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                      : "?"}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex flex-col items-start text-left">
-                  <span className="text-sm font-medium">{user.name}</span>
+                  <span className="text-sm font-medium">
+                    {currentUser.name}
+                  </span>
                   <span className="text-xs text-muted-foreground">
-                    {user.email}
+                    {currentUser.email}
                   </span>
                 </div>
                 <SignOutButton className="ml-auto" />
@@ -300,7 +317,10 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
           </SidebarMenu>
         </SidebarFooter>
       </Sidebar>
-      <Dialog open={showNewFolderModal} onOpenChange={setShowNewFolderModal}>
+      <Dialog
+        open={state.showNewFolderModal}
+        onOpenChange={() => dispatch({ type: "TOGGLE_NEW_FOLDER_MODAL" })}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>New Folder</DialogTitle>
@@ -308,21 +328,26 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
           <Input
             autoFocus
             placeholder="Folder name"
-            value={newFolderName}
-            onChange={(e) => setNewFolderName(e.target.value)}
+            value={state.newFolderName}
+            onChange={(e) =>
+              dispatch({ type: "SET_NEW_FOLDER_NAME", payload: e.target.value })
+            }
             onKeyDown={(e) => {
-              if (e.key === "Enter" && newFolderName.trim()) {
+              if (e.key === "Enter" && state.newFolderName.trim()) {
                 handleConfirmNewFolder()
               }
             }}
           />
           <DialogFooter>
-            <Button variant="outline" onClick={handleCloseNewFolderModal}>
+            <Button
+              variant="outline"
+              onClick={() => dispatch({ type: "CLOSE_NEW_FOLDER_MODAL" })}
+            >
               Cancel
             </Button>
             <Button
               onClick={handleConfirmNewFolder}
-              disabled={!newFolderName.trim()}
+              disabled={!state.newFolderName.trim()}
             >
               Confirm
             </Button>
@@ -330,5 +355,5 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
         </DialogContent>
       </Dialog>
     </>
-  ) : null
+  )
 }
