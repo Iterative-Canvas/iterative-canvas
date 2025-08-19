@@ -3,7 +3,7 @@ import { fetchMutation } from "convex/nextjs"
 import { api } from "@/convex/_generated/api"
 import { convexAuthNextjsToken } from "@convex-dev/auth/nextjs/server"
 
-export default async function AppEntry() {
+export default async function Page() {
   const token = await convexAuthNextjsToken()
   if (!token) redirect("/signin")
 

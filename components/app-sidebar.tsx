@@ -2,12 +2,7 @@
 
 import { ComponentProps } from "react"
 import { FileText, Folder, FolderPlus, Ghost, Plus, Search } from "lucide-react"
-import {
-  useMutation,
-  usePreloadedQuery,
-  Preloaded,
-  useConvex,
-} from "convex/react"
+import { useMutation, usePreloadedQuery, Preloaded } from "convex/react"
 import { api } from "../convex/_generated/api"
 import { Id } from "../convex/_generated/dataModel"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -42,20 +37,17 @@ import { useAppContext } from "@/providers/AppProvider"
 export function AppSidebar({
   activeFolderId,
   activeCanvasId,
-  activeVersionId,
   preloadedFoldersWithCanvases,
   preloadedCurrentUser,
   ...props
 }: {
-  activeFolderId: string
-  activeCanvasId: string
-  activeVersionId: string
+  activeFolderId: Id<"folders">
+  activeCanvasId: Id<"canvases">
   preloadedFoldersWithCanvases: Preloaded<
     typeof api.public.getFoldersWithCanvases
   >
   preloadedCurrentUser: Preloaded<typeof api.public.getCurrentUser>
 } & ComponentProps<typeof Sidebar>) {
-  const convex = useConvex()
   const router = useRouter()
   const { state, dispatch } = useAppContext()
 
@@ -65,35 +57,22 @@ export function AppSidebar({
   const newCanvasMutation = useMutation(api.public.createNewCanvas)
   const newFolderMutation = useMutation(api.public.createNewFolder)
 
-  const createNewCanvas = async () => {
+  const handleCreateNewCanvas = async () => {
     const { canvasId, versionId } = await newCanvasMutation()
     router.push(`/app/folder/root/canvas/${canvasId}/version/${versionId}`)
   }
 
-  const createNewFolder = async (name: string) => {
-    await newFolderMutation({ name })
-  }
-
   const handleConfirmNewFolder = async () => {
     if (!state.newFolderName.trim()) return
-    await createNewFolder(state.newFolderName.trim())
     dispatch({ type: "CLOSE_NEW_FOLDER_MODAL" })
+    await newFolderMutation({ name: state.newFolderName.trim() })
   }
 
   const handleCanvasSelect = async (
     folderId: Id<"folders">,
     canvasId: Id<"canvases">,
   ) => {
-    const { versionId } = await convex.query(
-      api.public.getActiveVersionIdForCanvas,
-      {
-        canvasId,
-      },
-    )
-
-    router.push(
-      `/app/folder/${folderId}/canvas/${canvasId}/version/${versionId}`,
-    )
+    router.push(`/app/folder/${folderId}/canvas/${canvasId}`)
   }
 
   // Separate root and folders
@@ -126,7 +105,7 @@ export function AppSidebar({
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     className="cursor-pointer"
-                    onClick={createNewCanvas}
+                    onClick={handleCreateNewCanvas}
                   >
                     <Plus className="h-4 w-4" />
                     <span>New Canvas</span>
@@ -171,14 +150,10 @@ export function AppSidebar({
                           onClick={() =>
                             dispatch({
                               type: "TOGGLE_FOLDER",
-                              payload: folder.folderId as Id<"folders">,
+                              payload: folder.folderId!,
                             })
                           }
-                          aria-expanded={
-                            !!state.openFolders[
-                              folder.folderId as Id<"folders">
-                            ]
-                          }
+                          aria-expanded={!!state.openFolders[folder.folderId!]}
                         >
                           <Folder className="h-4 w-4" />
                           <span>{folder.folderName}</span>
@@ -204,9 +179,7 @@ export function AppSidebar({
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div> */}
-                        {state.openFolders[
-                          folder.folderId as Id<"folders">
-                        ] && (
+                        {state.openFolders[folder.folderId!] && (
                           <SidebarMenuSub>
                             {folder.canvases.length ? (
                               folder.canvases.map((canvas) => (
@@ -342,12 +315,14 @@ export function AppSidebar({
             <Button
               variant="outline"
               onClick={() => dispatch({ type: "CLOSE_NEW_FOLDER_MODAL" })}
+              className="cursor-pointer"
             >
               Cancel
             </Button>
             <Button
               onClick={handleConfirmNewFolder}
               disabled={!state.newFolderName.trim()}
+              className="cursor-pointer"
             >
               Confirm
             </Button>
