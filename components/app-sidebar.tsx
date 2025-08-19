@@ -1,7 +1,15 @@
 "use client"
 
 import { ComponentProps } from "react"
-import { FileText, Folder, FolderPlus, Ghost, Plus, Search } from "lucide-react"
+import {
+  FileText,
+  Folder,
+  FolderPlus,
+  Ghost,
+  MoreHorizontal,
+  Plus,
+  Search,
+} from "lucide-react"
 import { useMutation, usePreloadedQuery, Preloaded } from "convex/react"
 import { api } from "../convex/_generated/api"
 import { Id } from "../convex/_generated/dataModel"
@@ -21,16 +29,25 @@ import {
   SidebarGroupContent,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
   SidebarSeparator,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import { SidebarFooter } from "@/components/sidebar-footer"
 import { useRouter } from "next/navigation"
 import { useAppContext } from "@/providers/AppProvider"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuPortal,
+} from "@radix-ui/react-dropdown-menu"
 
 export function AppSidebar({
   activeFolderId,
@@ -48,6 +65,7 @@ export function AppSidebar({
 } & ComponentProps<typeof Sidebar>) {
   const router = useRouter()
   const { state, dispatch } = useAppContext()
+  const { isMobile } = useSidebar()
 
   const foldersWithCanvases = usePreloadedQuery(preloadedFoldersWithCanvases)
   const currentUser = usePreloadedQuery(preloadedCurrentUser)
@@ -140,11 +158,12 @@ export function AppSidebar({
                 <SidebarGroupContent>
                   <SidebarMenu>
                     {folders.map((folder) => (
-                      <SidebarMenuItem key={folder.folderId as string}>
+                      <SidebarMenuItem
+                        // className="group/folder"
+                        key={folder.folderId as string}
+                      >
                         <SidebarMenuButton
-                          // The `peer` className works in tandem with the commented
-                          // out dropdown menu below.
-                          className="peer cursor-pointer"
+                          className="peer/folder cursor-pointer"
                           onClick={() =>
                             dispatch({
                               type: "TOGGLE_FOLDER",
@@ -156,32 +175,35 @@ export function AppSidebar({
                           <Folder className="h-4 w-4" />
                           <span>{folder.folderName}</span>
                         </SidebarMenuButton>
-                        {/* TODO: This is being glitchy for some reason */}
-                        {/* <div className="invisible peer-hover:visible">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <SidebarMenuAction>
-                              <MoreHorizontal className="h-4 w-4" />
+                            <SidebarMenuAction className="opacity-0 peer-hover/folder:opacity-100 hover:opacity-100">
+                              <MoreHorizontal />
                             </SidebarMenuAction>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent side="right" align="start">
-                            <DropdownMenuItem>
-                              <span>Rename</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <span>Duplicate</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <span>Delete</span>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
+                          <DropdownMenuPortal>
+                            <DropdownMenuContent
+                              side={isMobile ? "bottom" : "right"}
+                              align={isMobile ? "end" : "start"}
+                              className="z-50 bg-background p-2 border rounded-lg"
+                            >
+                              <DropdownMenuItem>
+                                <span className="text-sm">Rename</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem>
+                                <span className="text-sm">Delete</span>
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenuPortal>
                         </DropdownMenu>
-                      </div> */}
                         {state.openFolders[folder.folderId!] && (
                           <SidebarMenuSub>
                             {folder.canvases.length ? (
                               folder.canvases.map((canvas) => (
-                                <SidebarMenuSubItem key={canvas._id}>
+                                <SidebarMenuSubItem
+                                  className="group/canvas"
+                                  key={canvas._id}
+                                >
                                   <SidebarMenuSubButton
                                     isActive={canvas._id === activeCanvasId}
                                     onClick={() =>
@@ -197,6 +219,31 @@ export function AppSidebar({
                                       {canvas.name ?? "Untitled Canvas"}
                                     </span>
                                   </SidebarMenuSubButton>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <SidebarMenuAction className="opacity-0 group-hover/canvas:opacity-100">
+                                        <MoreHorizontal />
+                                      </SidebarMenuAction>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuPortal>
+                                      <DropdownMenuContent
+                                        side={isMobile ? "bottom" : "right"}
+                                        align={isMobile ? "end" : "start"}
+                                        className="z-50 bg-background p-2 border rounded-lg"
+                                      >
+                                        <DropdownMenuItem>
+                                          <span className="text-sm">
+                                            Rename
+                                          </span>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem>
+                                          <span className="text-sm">
+                                            Delete
+                                          </span>
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenuPortal>
+                                  </DropdownMenu>
                                 </SidebarMenuSubItem>
                               ))
                             ) : (
@@ -226,7 +273,7 @@ export function AppSidebar({
               <SidebarGroupContent>
                 <SidebarMenu>
                   {root.canvases.map((canvas) => (
-                    <SidebarMenuItem key={canvas._id}>
+                    <SidebarMenuItem className="group/canvas" key={canvas._id}>
                       <SidebarMenuButton
                         isActive={canvas._id === activeCanvasId}
                         onClick={() =>
@@ -240,6 +287,27 @@ export function AppSidebar({
                         <FileText className="h-4 w-4" />
                         <span>{canvas.name ?? "Untitled Canvas"}</span>
                       </SidebarMenuButton>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <SidebarMenuAction className="opacity-0 group-hover/canvas:opacity-100">
+                            <MoreHorizontal />
+                          </SidebarMenuAction>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuPortal>
+                          <DropdownMenuContent
+                            side={isMobile ? "bottom" : "right"}
+                            align={isMobile ? "end" : "start"}
+                            className="z-50 bg-background p-2 border rounded-lg"
+                          >
+                            <DropdownMenuItem>
+                              <span className="text-sm">Rename</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <span className="text-sm">Delete</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenuPortal>
+                      </DropdownMenu>
                     </SidebarMenuItem>
                   ))}
                 </SidebarMenu>
