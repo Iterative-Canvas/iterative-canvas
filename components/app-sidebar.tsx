@@ -5,7 +5,6 @@ import { FileText, Folder, FolderPlus, Ghost, Plus, Search } from "lucide-react"
 import { useMutation, usePreloadedQuery, Preloaded } from "convex/react"
 import { api } from "../convex/_generated/api"
 import { Id } from "../convex/_generated/dataModel"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -18,7 +17,6 @@ import {
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarHeader,
@@ -30,7 +28,7 @@ import {
   SidebarMenuSubItem,
   SidebarSeparator,
 } from "@/components/ui/sidebar"
-import { SignOutButton } from "./signout-button"
+import { SidebarFooter } from "@/components/sidebar-footer"
 import { useRouter } from "next/navigation"
 import { useAppContext } from "@/providers/AppProvider"
 
@@ -257,38 +255,7 @@ export function AppSidebar({
             </SidebarGroup>
           )}
         </SidebarContent>
-
-        <SidebarFooter>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton className="h-12 cursor-pointer">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage
-                    src={currentUser.image || "/placeholder.svg"}
-                    alt={currentUser.name}
-                  />
-                  <AvatarFallback>
-                    {currentUser.name
-                      ? currentUser.name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")
-                      : "?"}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex flex-col items-start text-left">
-                  <span className="text-sm font-medium">
-                    {currentUser.name}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {currentUser.email}
-                  </span>
-                </div>
-                <SignOutButton className="ml-auto" />
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarFooter>
+        <SidebarFooter user={currentUser} />
       </Sidebar>
       <Dialog
         open={state.showNewFolderModal}
