@@ -65,11 +65,12 @@ export const getDefaultAppUrlPathParams = mutation({
     const userId = await getAuthUserId(ctx)
     if (!userId) throw new Error("Not authenticated")
 
-    // 1. Find the most recently edited/updated canvas for the user
+    // 1. Find the most recently edited/updated canvas that's not organized in a folder
     const canvas = await ctx.db
       .query("canvases")
       .withIndex("userId_lastModifiedTime", (q) => q.eq("userId", userId))
       .order("desc")
+      .filter((q) => q.eq(q.field("folderId"), undefined))
       .first()
 
     let canvasId: Id<"canvases">
