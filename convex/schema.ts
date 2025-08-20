@@ -15,10 +15,17 @@ const schema = defineSchema({
     folderId: v.optional(v.id("folders")),
     name: v.optional(v.string()),
     // Update this any time a canvas or any of it's child entities are modified
-    lastModifiedTime: v.number(),
-  })
-    .index("userId_lastModifiedTime", ["userId", "lastModifiedTime"])
-    .index("folderId_lastModifiedTime", ["folderId", "lastModifiedTime"]),
+    entityUpdate: v.id("entityUpdates"),
+  }).index("userId_folderId", ["userId", "folderId"]),
+
+  // Allows us to track an updated time for "domain entities", such as a canvas, when
+  // considered as a logical unit with all of it's children and relations. By structuring
+  // the schema this way, rather than including updatedTime as a field directly on the
+  // canvases table, we can avoid problems associated with "over-reactivity", in which
+  // canvas queries that don't care about updatedTime are constantly re-running.
+  entityUpdates: defineTable({
+    updatedTime: v.number(),
+  }),
 
   canvasVersions: defineTable({
     canvasId: v.id("canvases"),

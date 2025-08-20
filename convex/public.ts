@@ -1,64 +1,57 @@
 import { mutation, query } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
-import { Doc, Id } from "./_generated/dataModel"
-import { scaffoldNewCanvas } from "./helpers"
+import { Id } from "./_generated/dataModel"
+import {
+  getCanvasesByFolderIdWithUpdatedTime,
+  scaffoldNewCanvas,
+} from "./helpers"
 import { v } from "convex/values"
 
+/**
+ * Returns an array of folder objects (root first, then alphabetical order).
+ * Each folder object contains the canvases it owns, sorted by updatedTime desc.
+ */
 export const getFoldersWithCanvases = query({
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx)
     if (!userId) throw new Error("Not authenticated")
 
-    // Fetch all folders for the user.
+    // 1. Fetch all folders for the user.
     // Folders will be sorted alphabetically by default because of the userId_name index.
     const folders = await ctx.db
       .query("folders")
       .withIndex("userId_name", (q) => q.eq("userId", userId))
       .collect()
 
-    // Fetch all canvases for the user
-    const canvases = await ctx.db
-      .query("canvases")
-      .withIndex("userId_lastModifiedTime", (q) => q.eq("userId", userId))
-      .order("desc")
-      .collect()
+    // 2. Prep return value
+    const foldersArr = [
+      { folderId: null, folderName: "root" },
+      ...folders.map((f) => ({ folderId: f._id, folderName: f.name })),
+    ]
 
-    // Group canvases by folderId (null for root)
-    const folderMap = new Map<Id<"folders"> | null, Array<Doc<"canvases">>>()
+    // 3. Populate folders with canvases
+    const foldersWithCanvases = await Promise.all(
+      foldersArr.map(async (f) => {
+        const canvases = await getCanvasesByFolderIdWithUpdatedTime(
+          ctx,
+          userId,
+          f.folderId ?? "root",
+          "desc",
+        )
+        return { ...f, canvases }
+      }),
+    )
 
-    for (const canvas of canvases) {
-      const key = canvas.folderId ?? null
-      if (!folderMap.has(key)) folderMap.set(key, [])
-      folderMap.get(key)!.push(canvas)
-    }
-
-    // Build the result array
-    const result: Array<{
-      folderId: Id<"folders"> | null
-      folderName: string | "root"
-      canvases: Array<Doc<"canvases">>
-    }> = []
-
-    // Root folder first
-    result.push({
-      folderId: null,
-      folderName: "root",
-      canvases: folderMap.get(null) ?? [],
-    })
-
-    // Other folders
-    for (const folder of folders) {
-      result.push({
-        folderId: folder._id,
-        folderName: folder.name,
-        canvases: folderMap.get(folder._id) ?? [],
-      })
-    }
-
-    return result
+    return foldersWithCanvases
   },
 })
 
+/**
+ * Upon login, we need to direct the user to /app/folder/<folder-id>/canvas/<canvas-id>/version/<version-id>
+ *   - We first check if there are any canvases at the root level. If so, get the most recently updated one
+ *     and construct the URL.
+ *   - If none exist, we scaffold a new canvas at the root level and then construct the URL using that.
+ */
 export const getDefaultAppUrlPathParams = mutation({
   args: {},
   handler: async (ctx) => {
@@ -66,12 +59,9 @@ export const getDefaultAppUrlPathParams = mutation({
     if (!userId) throw new Error("Not authenticated")
 
     // 1. Find the most recently edited/updated canvas that's not organized in a folder
-    const canvas = await ctx.db
-      .query("canvases")
-      .withIndex("userId_lastModifiedTime", (q) => q.eq("userId", userId))
-      .order("desc")
-      .filter((q) => q.eq(q.field("folderId"), undefined))
-      .first()
+    const canvas = (
+      await getCanvasesByFolderIdWithUpdatedTime(ctx, userId, "root", "desc")
+    )[0]
 
     let canvasId: Id<"canvases">
     let versionId: Id<"canvasVersions">
@@ -101,7 +91,7 @@ export const getDefaultAppUrlPathParams = mutation({
       ;({ canvasId, versionId } = await scaffoldNewCanvas(ctx, userId))
     }
 
-    // 6. Return the ids needed to construct the URL
+    // 5. Return the ids needed to construct the URL
     return {
       folderId: "root",
       canvasId,
