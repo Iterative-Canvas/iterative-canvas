@@ -51,14 +51,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { AppSidebar } from "@/components/app-sidebar"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar"
+import { SidebarTrigger } from "@/components/ui/sidebar"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -853,491 +848,477 @@ export default function App() {
   }
 
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
-          <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="mr-2 h-4" />
-          <div className="flex flex-1 items-center gap-2">
-            <h1 className="text-lg font-semibold">Lesson Plan • v2</h1>
-          </div>
-          <div className="flex items-center gap-1">
-            {actionButtons.map((button, index) => (
-              <Button
-                key={index}
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-              >
-                <button.icon className="h-4 w-4" />
-                <span className="sr-only">{button.label}</span>
-              </Button>
-            ))}
-          </div>
-        </header>
-        <ResizablePanelGroup
-          direction="horizontal"
-          className="flex-1"
-          ref={firstPanelGroupRef}
+    <>
+      <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+        <SidebarTrigger className="-ml-1" />
+        <Separator orientation="vertical" className="mr-2 h-4" />
+        <div className="flex flex-1 items-center gap-2">
+          <h1 className="text-lg font-semibold">Lesson Plan • v2</h1>
+        </div>
+        <div className="flex items-center gap-1">
+          {actionButtons.map((button, index) => (
+            <Button key={index} variant="ghost" size="icon" className="h-8 w-8">
+              <button.icon className="h-4 w-4" />
+              <span className="sr-only">{button.label}</span>
+            </Button>
+          ))}
+        </div>
+      </header>
+      <ResizablePanelGroup
+        direction="horizontal"
+        className="flex-1"
+        ref={firstPanelGroupRef}
+      >
+        <ResizablePanel
+          defaultSize={50}
+          className="scrollbar-hidden"
+          ref={promptRequirementsPanelRef}
+          collapsible={true}
+          onResize={(size) => setPromptRequirementsPanelCollapsed(size === 0)}
         >
-          <ResizablePanel
-            defaultSize={50}
-            className="scrollbar-hidden"
-            ref={promptRequirementsPanelRef}
-            collapsible={true}
-            onResize={(size) => setPromptRequirementsPanelCollapsed(size === 0)}
-          >
-            <ResizablePanelGroup direction="vertical" ref={secondPanelGroupRef}>
-              <ResizablePanel
-                defaultSize={50}
-                className="p-4 !overflow-y-auto scrollbar-hidden"
-                ref={promptPanelRef}
-                collapsible={true}
-                onResize={(size) => setPromptPanelCollapsed(size === 0)}
-              >
-                {/* User Prompt Section */}
-                <div className="h-full">
-                  <Card className="flex flex-col h-full border-none shadow-none gap-4 py-5">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-base font-medium">
-                        Prompt
-                      </CardTitle>
-                      <div className="flex items-center gap-1">
-                        <ModelSelector
-                          models={models}
-                          selectedModel={selectedModel}
-                          onModelChange={setSelectedModel}
-                          buttonClassName="h-8"
-                        />
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <Sparkles className="h-4 w-4" />
-                          <span className="sr-only">Improve Prompt</span>
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <Copy className="h-4 w-4" />
-                          <span className="sr-only">Copy</span>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={
-                            requirementsPanelCollapsed
-                              ? resetPanelsLayout
-                              : maximizeRequirementsPanel
-                          }
-                        >
-                          {requirementsPanelCollapsed ? (
-                            <Minimize2 className="h-4 w-4" />
-                          ) : (
-                            <Maximize2 className="h-4 w-4" />
-                          )}
-                          <span className="sr-only">
-                            {requirementsPanelCollapsed
-                              ? "Restore"
-                              : "Full Screen"}
-                          </span>
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="flex flex-1 flex-col relative">
-                      <Textarea
-                        value={input}
-                        placeholder="Enter your prompt here..."
-                        onChange={handleInputChange}
-                        className="flex-1 resize-none pb-16 field-sizing-fixed"
+          <ResizablePanelGroup direction="vertical" ref={secondPanelGroupRef}>
+            <ResizablePanel
+              defaultSize={50}
+              className="p-4 !overflow-y-auto scrollbar-hidden"
+              ref={promptPanelRef}
+              collapsible={true}
+              onResize={(size) => setPromptPanelCollapsed(size === 0)}
+            >
+              {/* User Prompt Section */}
+              <div className="h-full">
+                <Card className="flex flex-col h-full border-none shadow-none gap-4 py-5">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-base font-medium">
+                      Prompt
+                    </CardTitle>
+                    <div className="flex items-center gap-1">
+                      <ModelSelector
+                        models={models}
+                        selectedModel={selectedModel}
+                        onModelChange={setSelectedModel}
+                        buttonClassName="h-8"
                       />
-                      <div className="absolute py-2 bottom-px left-6 right-6 mx-2 flex items-center justify-between bg-background/95">
-                        <div className="flex items-center gap-1">
-                          <FileUploader onAddFiles={handleAddFiles} />
-                          <ToolsPopover
-                            enabledTools={enabledTools}
-                            onToolChange={handleToolChange}
-                          />
-                          {enabledTools.codeInterpreter && (
-                            <FileAndToolChip
-                              name="Code Interpreter"
-                              onDelete={() =>
-                                handleToolChange("codeInterpreter", false)
-                              }
-                            />
-                          )}
-                          {enabledTools.webSearch && (
-                            <FileAndToolChip
-                              name="Web Search"
-                              onDelete={() =>
-                                handleToolChange("webSearch", false)
-                              }
-                            />
-                          )}
-                          {attachedFiles.map((file) => (
-                            <FileAndToolChip
-                              key={file.id}
-                              name={file.name}
-                              onDelete={() => handleDeleteFile(file.id)}
-                            />
-                          ))}
-                        </div>
-                        <RunButton
-                          disabled={!input || isLoading}
-                          loading={isLoading}
-                          tooltipText="Please enter a prompt to run."
-                          onRunClick={handleSubmit}
-                          onRunWithoutEvalClick={() => {}}
-                        />
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </ResizablePanel>
-              <ResizableHandle withHandle className="bg-primary/25" />
-              <ResizablePanel
-                defaultSize={50}
-                className="p-4 !overflow-y-auto scrollbar-hidden"
-                ref={requirementsPanelRef}
-                collapsible={true}
-                onResize={(size) => setRequirementsPanelCollapsed(size === 0)}
-              >
-                {/* Requirements Section */}
-                <div className="h-full">
-                  <Card className="flex flex-col h-full border-none shadow-none gap-4 py-5">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-base font-medium">
-                        Requirements
-                      </CardTitle>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Sparkles className="h-4 w-4" />
+                        <span className="sr-only">Improve Prompt</span>
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Copy className="h-4 w-4" />
+                        <span className="sr-only">Copy</span>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={
+                          requirementsPanelCollapsed
+                            ? resetPanelsLayout
+                            : maximizeRequirementsPanel
+                        }
+                      >
+                        {requirementsPanelCollapsed ? (
+                          <Minimize2 className="h-4 w-4" />
+                        ) : (
+                          <Maximize2 className="h-4 w-4" />
+                        )}
+                        <span className="sr-only">
+                          {requirementsPanelCollapsed
+                            ? "Restore"
+                            : "Full Screen"}
+                        </span>
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="flex flex-1 flex-col relative">
+                    <Textarea
+                      value={input}
+                      placeholder="Enter your prompt here..."
+                      onChange={handleInputChange}
+                      className="flex-1 resize-none pb-16 field-sizing-fixed"
+                    />
+                    <div className="absolute py-2 bottom-px left-6 right-6 mx-2 flex items-center justify-between bg-background/95">
                       <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <Sparkles className="h-4 w-4" />
-                          <span className="sr-only">Improve Prompt</span>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={
-                            promptPanelCollapsed
-                              ? resetPanelsLayout
-                              : maximizePromptPanel
-                          }
-                        >
-                          {promptPanelCollapsed ? (
-                            <Minimize2 className="h-4 w-4" />
-                          ) : (
-                            <Maximize2 className="h-4 w-4" />
-                          )}
-                          <span className="sr-only">
-                            {promptPanelCollapsed ? "Restore" : "Full Screen"}
-                          </span>
-                        </Button>
+                        <FileUploader onAddFiles={handleAddFiles} />
+                        <ToolsPopover
+                          enabledTools={enabledTools}
+                          onToolChange={handleToolChange}
+                        />
+                        {enabledTools.codeInterpreter && (
+                          <FileAndToolChip
+                            name="Code Interpreter"
+                            onDelete={() =>
+                              handleToolChange("codeInterpreter", false)
+                            }
+                          />
+                        )}
+                        {enabledTools.webSearch && (
+                          <FileAndToolChip
+                            name="Web Search"
+                            onDelete={() =>
+                              handleToolChange("webSearch", false)
+                            }
+                          />
+                        )}
+                        {attachedFiles.map((file) => (
+                          <FileAndToolChip
+                            key={file.id}
+                            name={file.name}
+                            onDelete={() => handleDeleteFile(file.id)}
+                          />
+                        ))}
                       </div>
-                    </CardHeader>
-                    <CardContent className="flex flex-1 flex-col gap-3 overflow-auto">
-                      <Card className="flex flex-1 flex-col pl-8 pr-4 rounded-md shadow-xs overflow-auto scrollbar-hidden">
-                        <div className="flex-1 space-y-8 min-h-[120px]">
-                          {requirements.map((req) => (
-                            <div
-                              key={req.id}
-                              className="flex flex-col gap-2 -ml-6"
-                            >
-                              <div className="flex">
-                                <Button
-                                  type="button"
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-6 w-6 mt-1 hover:text-red-500"
-                                >
-                                  <X className="h-4 w-4" />
-                                </Button>
-                                <div className="flex-1 flex flex-col">
-                                  <div className="relative w-full">
-                                    <Textarea
-                                      placeholder="Enter requirement..."
-                                      className={cn(
-                                        "text-sm pr-8 resize-none scrollbar-hidden",
-                                        req.fitToContent
-                                          ? "field-sizing-content overflow-hidden"
-                                          : "field-sizing-fixed h-9 overflow-auto",
-                                      )}
-                                      rows={req.fitToContent ? undefined : 1}
-                                      value={req.text}
-                                      onChange={(e) =>
-                                        handleRequirementChange(
-                                          req.id,
-                                          "text",
-                                          e.target.value,
-                                        )
-                                      }
-                                    />
-                                    <Button
-                                      type="button"
-                                      size="icon"
-                                      variant="ghost"
-                                      className="absolute top-1 right-1 h-6 w-6 text-primary/30"
-                                      onClick={() => toggleFitToContent(req.id)}
-                                      title={
-                                        req.fitToContent ? "Collapse" : "Expand"
-                                      }
-                                    >
-                                      {req.fitToContent ? (
-                                        <ChevronsDownUp className="h-4 w-4" />
-                                      ) : (
-                                        <ChevronsUpDown className="h-4 w-4" />
-                                      )}
-                                    </Button>
-                                  </div>
-                                  <div>
-                                    <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                      <RunButton
+                        disabled={!input || isLoading}
+                        loading={isLoading}
+                        tooltipText="Please enter a prompt to run."
+                        onRunClick={handleSubmit}
+                        onRunWithoutEvalClick={() => {}}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </ResizablePanel>
+            <ResizableHandle withHandle className="bg-primary/25" />
+            <ResizablePanel
+              defaultSize={50}
+              className="p-4 !overflow-y-auto scrollbar-hidden"
+              ref={requirementsPanelRef}
+              collapsible={true}
+              onResize={(size) => setRequirementsPanelCollapsed(size === 0)}
+            >
+              {/* Requirements Section */}
+              <div className="h-full">
+                <Card className="flex flex-col h-full border-none shadow-none gap-4 py-5">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-base font-medium">
+                      Requirements
+                    </CardTitle>
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Sparkles className="h-4 w-4" />
+                        <span className="sr-only">Improve Prompt</span>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={
+                          promptPanelCollapsed
+                            ? resetPanelsLayout
+                            : maximizePromptPanel
+                        }
+                      >
+                        {promptPanelCollapsed ? (
+                          <Minimize2 className="h-4 w-4" />
+                        ) : (
+                          <Maximize2 className="h-4 w-4" />
+                        )}
+                        <span className="sr-only">
+                          {promptPanelCollapsed ? "Restore" : "Full Screen"}
+                        </span>
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="flex flex-1 flex-col gap-3 overflow-auto">
+                    <Card className="flex flex-1 flex-col pl-8 pr-4 rounded-md shadow-xs overflow-auto scrollbar-hidden">
+                      <div className="flex-1 space-y-8 min-h-[120px]">
+                        {requirements.map((req) => (
+                          <div
+                            key={req.id}
+                            className="flex flex-col gap-2 -ml-6"
+                          >
+                            <div className="flex">
+                              <Button
+                                type="button"
+                                size="icon"
+                                variant="ghost"
+                                className="h-6 w-6 mt-1 hover:text-red-500"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                              <div className="flex-1 flex flex-col">
+                                <div className="relative w-full">
+                                  <Textarea
+                                    placeholder="Enter requirement..."
+                                    className={cn(
+                                      "text-sm pr-8 resize-none scrollbar-hidden",
+                                      req.fitToContent
+                                        ? "field-sizing-content overflow-hidden"
+                                        : "field-sizing-fixed h-9 overflow-auto",
+                                    )}
+                                    rows={req.fitToContent ? undefined : 1}
+                                    value={req.text}
+                                    onChange={(e) =>
+                                      handleRequirementChange(
+                                        req.id,
+                                        "text",
+                                        e.target.value,
+                                      )
+                                    }
+                                  />
+                                  <Button
+                                    type="button"
+                                    size="icon"
+                                    variant="ghost"
+                                    className="absolute top-1 right-1 h-6 w-6 text-primary/30"
+                                    onClick={() => toggleFitToContent(req.id)}
+                                    title={
+                                      req.fitToContent ? "Collapse" : "Expand"
+                                    }
+                                  >
+                                    {req.fitToContent ? (
+                                      <ChevronsDownUp className="h-4 w-4" />
+                                    ) : (
+                                      <ChevronsUpDown className="h-4 w-4" />
+                                    )}
+                                  </Button>
+                                </div>
+                                <div>
+                                  <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                                    <div className="flex items-center gap-1.5">
+                                      <Label htmlFor={`req-${req.id}`}>
+                                        Required?
+                                      </Label>
+                                      <Checkbox
+                                        id={`req-${req.id}`}
+                                        checked={req.required}
+                                        onCheckedChange={(checked: boolean) =>
+                                          handleRequirementChange(
+                                            req.id,
+                                            "required",
+                                            checked,
+                                          )
+                                        }
+                                      />
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                      <Label htmlFor={`weight-${req.id}`}>
+                                        Weight
+                                      </Label>
+                                      <Input
+                                        id={`weight-${req.id}`}
+                                        type="number"
+                                        min="1"
+                                        step="1"
+                                        value={req.weight}
+                                        onChange={(e) =>
+                                          handleRequirementChange(
+                                            req.id,
+                                            "weight",
+                                            Number.parseInt(e.target.value),
+                                          )
+                                        }
+                                        className="h-6 w-14 text-xs"
+                                      />
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                      <Label>Type</Label>
+                                      <Select
+                                        value={req.type}
+                                        onValueChange={(
+                                          value: "pass-fail" | "subjective",
+                                        ) =>
+                                          handleRequirementChange(
+                                            req.id,
+                                            "type",
+                                            value,
+                                          )
+                                        }
+                                      >
+                                        <SelectTrigger className="h-6 text-xs w-28">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="pass-fail">
+                                            Pass/Fail
+                                          </SelectItem>
+                                          <SelectItem value="subjective">
+                                            Subjective
+                                          </SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    {req.type === "subjective" && (
                                       <div className="flex items-center gap-1.5">
-                                        <Label htmlFor={`req-${req.id}`}>
-                                          Required?
-                                        </Label>
-                                        <Checkbox
-                                          id={`req-${req.id}`}
-                                          checked={req.required}
-                                          onCheckedChange={(checked: boolean) =>
-                                            handleRequirementChange(
-                                              req.id,
-                                              "required",
-                                              checked,
-                                            )
-                                          }
-                                        />
-                                      </div>
-                                      <div className="flex items-center gap-1.5">
-                                        <Label htmlFor={`weight-${req.id}`}>
-                                          Weight
+                                        <Label htmlFor={`threshold-${req.id}`}>
+                                          Threshold
                                         </Label>
                                         <Input
-                                          id={`weight-${req.id}`}
+                                          id={`threshold-${req.id}`}
                                           type="number"
-                                          min="1"
-                                          step="1"
-                                          value={req.weight}
+                                          min="0"
+                                          max="1"
+                                          step="0.1"
+                                          value={req.threshold}
                                           onChange={(e) =>
                                             handleRequirementChange(
                                               req.id,
-                                              "weight",
-                                              Number.parseInt(e.target.value),
+                                              "threshold",
+                                              Number.parseFloat(e.target.value),
                                             )
                                           }
-                                          className="h-6 w-14 text-xs"
+                                          className="h-6 w-16 text-xs"
                                         />
                                       </div>
-                                      <div className="flex items-center gap-1.5">
-                                        <Label>Type</Label>
-                                        <Select
-                                          value={req.type}
-                                          onValueChange={(
-                                            value: "pass-fail" | "subjective",
-                                          ) =>
-                                            handleRequirementChange(
-                                              req.id,
-                                              "type",
-                                              value,
-                                            )
-                                          }
-                                        >
-                                          <SelectTrigger className="h-6 text-xs w-28">
-                                            <SelectValue />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            <SelectItem value="pass-fail">
-                                              Pass/Fail
-                                            </SelectItem>
-                                            <SelectItem value="subjective">
-                                              Subjective
-                                            </SelectItem>
-                                          </SelectContent>
-                                        </Select>
-                                      </div>
-                                      {req.type === "subjective" && (
-                                        <div className="flex items-center gap-1.5">
-                                          <Label
-                                            htmlFor={`threshold-${req.id}`}
-                                          >
-                                            Threshold
-                                          </Label>
-                                          <Input
-                                            id={`threshold-${req.id}`}
-                                            type="number"
-                                            min="0"
-                                            max="1"
-                                            step="0.1"
-                                            value={req.threshold}
-                                            onChange={(e) =>
-                                              handleRequirementChange(
-                                                req.id,
-                                                "threshold",
-                                                Number.parseFloat(
-                                                  e.target.value,
-                                                ),
-                                              )
-                                            }
-                                            className="h-6 w-16 text-xs"
-                                          />
-                                        </div>
-                                      )}
-                                      <div className="ml-auto flex items-center gap-1">
-                                        <ModelSelector
-                                          models={models}
-                                          selectedModel={req.model}
-                                          onModelChange={(model) =>
-                                            handleRequirementChange(
-                                              req.id,
-                                              "model",
-                                              model,
-                                            )
-                                          }
-                                          buttonClassName="h-6"
-                                        />
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-6 w-6"
-                                          onClick={() =>
-                                            handleRunRequirement(req.id)
-                                          }
-                                          disabled={req.loading}
-                                        >
-                                          {req.loading ? (
-                                            <Loader2 className="h-3 w-3 animate-spin" />
-                                          ) : (
-                                            <Play className="h-3 w-3" />
-                                          )}
-                                        </Button>
-                                        <Separator
-                                          orientation="vertical"
-                                          className="h-4"
-                                        />
-                                        <ResultIndicator
-                                          result={req.result}
-                                          score={req.score}
-                                          reasoning={req.reasoning}
-                                        />
-                                      </div>
+                                    )}
+                                    <div className="ml-auto flex items-center gap-1">
+                                      <ModelSelector
+                                        models={models}
+                                        selectedModel={req.model}
+                                        onModelChange={(model) =>
+                                          handleRequirementChange(
+                                            req.id,
+                                            "model",
+                                            model,
+                                          )
+                                        }
+                                        buttonClassName="h-6"
+                                      />
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6"
+                                        onClick={() =>
+                                          handleRunRequirement(req.id)
+                                        }
+                                        disabled={req.loading}
+                                      >
+                                        {req.loading ? (
+                                          <Loader2 className="h-3 w-3 animate-spin" />
+                                        ) : (
+                                          <Play className="h-3 w-3" />
+                                        )}
+                                      </Button>
+                                      <Separator
+                                        orientation="vertical"
+                                        className="h-4"
+                                      />
+                                      <ResultIndicator
+                                        result={req.result}
+                                        score={req.score}
+                                        reasoning={req.reasoning}
+                                      />
                                     </div>
                                   </div>
                                 </div>
                               </div>
                             </div>
-                          ))}
-                          {/* A little hack to keep proper spacing between the last list item and the bottom border of the card container */}
-                          <div className="h-px" />
-                        </div>
-                      </Card>
-                      <div className="flex justify-end items-center gap-4">
-                        <div className="flex items-center gap-2">
-                          <Label
-                            htmlFor="success-threshold"
-                            className="text-xs font-normal"
-                          >
-                            Success Threshold
-                          </Label>
-                          <Input
-                            id="success-threshold"
-                            type="number"
-                            min="0"
-                            max="1"
-                            step="0.1"
-                            value={successThreshold}
-                            onChange={(e) =>
-                              setSuccessThreshold(
-                                Number.parseFloat(e.target.value),
-                              )
-                            }
-                            className="h-8 w-20"
-                          />
-                        </div>
-                        <Button variant="outline" size="sm">
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add Requirement
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleRunAll}
-                          disabled={isRunAllLoading}
+                          </div>
+                        ))}
+                        {/* A little hack to keep proper spacing between the last list item and the bottom border of the card container */}
+                        <div className="h-px" />
+                      </div>
+                    </Card>
+                    <div className="flex justify-end items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <Label
+                          htmlFor="success-threshold"
+                          className="text-xs font-normal"
                         >
-                          {isRunAllLoading ? (
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          ) : (
-                            <PlayCircle className="h-4 w-4 mr-2" />
-                          )}
-                          Run All
-                        </Button>
-                        <Separator orientation="vertical" className="h-6" />
-                        <ResultIndicator
-                          result={overallResult.result}
-                          score={overallResult.score}
-                          reasoning={overallResult.reasoning}
-                          className="mr-4"
+                          Success Threshold
+                        </Label>
+                        <Input
+                          id="success-threshold"
+                          type="number"
+                          min="0"
+                          max="1"
+                          step="0.1"
+                          value={successThreshold}
+                          onChange={(e) =>
+                            setSuccessThreshold(
+                              Number.parseFloat(e.target.value),
+                            )
+                          }
+                          className="h-8 w-20"
                         />
                       </div>
-                    </CardContent>
-                  </Card>
+                      <Button variant="outline" size="sm">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Requirement
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleRunAll}
+                        disabled={isRunAllLoading}
+                      >
+                        {isRunAllLoading ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <PlayCircle className="h-4 w-4 mr-2" />
+                        )}
+                        Run All
+                      </Button>
+                      <Separator orientation="vertical" className="h-6" />
+                      <ResultIndicator
+                        result={overallResult.result}
+                        score={overallResult.score}
+                        reasoning={overallResult.reasoning}
+                        className="mr-4"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        </ResizablePanel>
+        <ResizableHandle withHandle className="bg-primary/25" />
+        <ResizablePanel
+          defaultSize={50}
+          className="p-4 !overflow-y-auto scrollbar-hidden"
+          ref={canvasPanelRef}
+          collapsible={true}
+        >
+          {/* Right Half - Canvas */}
+          <div className="h-full min-w-64">
+            <Card className="flex flex-col h-full border-none shadow-none gap-4 py-5">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-base font-medium">Canvas</CardTitle>
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Copy className="h-4 w-4" />
+                    <span className="sr-only">Copy</span>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={
+                      promptRequirementsPanelCollapsed
+                        ? resetPanelsLayout
+                        : maximizeCanvasPanel
+                    }
+                  >
+                    {promptRequirementsPanelCollapsed ? (
+                      <Minimize2 className="h-4 w-4" />
+                    ) : (
+                      <Maximize2 className="h-4 w-4" />
+                    )}
+                    <span className="sr-only">
+                      {promptRequirementsPanelCollapsed
+                        ? "Restore"
+                        : "Full Screen"}
+                    </span>
+                  </Button>
                 </div>
-              </ResizablePanel>
-            </ResizablePanelGroup>
-          </ResizablePanel>
-          <ResizableHandle withHandle className="bg-primary/25" />
-          <ResizablePanel
-            defaultSize={50}
-            className="p-4 !overflow-y-auto scrollbar-hidden"
-            ref={canvasPanelRef}
-            collapsible={true}
-          >
-            {/* Right Half - Canvas */}
-            <div className="h-full min-w-64">
-              <Card className="flex flex-col h-full border-none shadow-none gap-4 py-5">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-base font-medium">
-                    Canvas
-                  </CardTitle>
-                  <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <Copy className="h-4 w-4" />
-                      <span className="sr-only">Copy</span>
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={
-                        promptRequirementsPanelCollapsed
-                          ? resetPanelsLayout
-                          : maximizeCanvasPanel
-                      }
-                    >
-                      {promptRequirementsPanelCollapsed ? (
-                        <Minimize2 className="h-4 w-4" />
-                      ) : (
-                        <Maximize2 className="h-4 w-4" />
-                      )}
-                      <span className="sr-only">
-                        {promptRequirementsPanelCollapsed
-                          ? "Restore"
-                          : "Full Screen"}
-                      </span>
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="flex flex-1 flex-col gap-3">
-                  <Textarea
-                    value={canvas}
-                    placeholder="The generated response will appear here..."
-                    className="flex-1 resize-none field-sizing-fixed"
-                    onChange={(e) => setCanvas(e.target.value)}
-                  />
-                  <div className="flex justify-end gap-2">
-                    <RefinePopover />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </ResizablePanel>
-        </ResizablePanelGroup>
-      </SidebarInset>
-    </SidebarProvider>
+              </CardHeader>
+              <CardContent className="flex flex-1 flex-col gap-3">
+                <Textarea
+                  value={canvas}
+                  placeholder="The generated response will appear here..."
+                  className="flex-1 resize-none field-sizing-fixed"
+                  onChange={(e) => setCanvas(e.target.value)}
+                />
+                <div className="flex justify-end gap-2">
+                  <RefinePopover />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
+    </>
   )
 }

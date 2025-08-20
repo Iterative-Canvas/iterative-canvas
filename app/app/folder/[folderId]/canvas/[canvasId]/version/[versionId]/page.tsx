@@ -1,6 +1,4 @@
 export default async function App() {
-  await sleep(2000)
-
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <div className="flex flex-1 items-center justify-center">
