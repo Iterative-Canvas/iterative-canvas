@@ -8,7 +8,7 @@ import {
   Copy,
   Download,
   Eye,
-  History,
+  History as HistoryIcon,
   Share,
   Trash2,
   Send,
@@ -77,7 +77,7 @@ import {
 } from "react-resizable-panels"
 
 const actionButtons = [
-  { icon: History, label: "History" },
+  { icon: HistoryIcon, label: "History" },
   { icon: Clock, label: "Recent" },
   { icon: Share, label: "Share" },
   { icon: Eye, label: "Preview" },
