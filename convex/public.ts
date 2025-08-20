@@ -7,6 +7,20 @@ import {
 } from "./helpers"
 import { v } from "convex/values"
 
+export const getCanvasById = query({
+  args: { id: v.id("canvases") },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+
+    const canvas = await ctx.db.get(args.id)
+
+    if (!canvas) throw new Error(`Canvas ${args.id} not found`)
+
+    return canvas
+  },
+})
+
 /**
  * Returns an array of folder objects (root first, then alphabetical order).
  * Each folder object contains the canvases it owns, sorted by updatedTime desc.

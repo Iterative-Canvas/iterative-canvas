@@ -1,5 +1,5 @@
 ---
-applyTo: "convex/**/*.ts"
+applyTo: "convex/schema.ts"
 ---
 
 # Best Practices & Mental Models for Convex Data Modeling and Schema Design

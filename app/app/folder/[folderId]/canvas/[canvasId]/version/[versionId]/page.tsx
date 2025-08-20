@@ -1,13 +1,33 @@
-export default async function App() {
-  return (
-    <div className="flex flex-1 flex-col overflow-hidden">
-      <div className="flex flex-1 items-center justify-center">
-        <h1 className="text-2xl font-bold">Create a canvas to get started</h1>
-      </div>
-    </div>
-  )
-}
+import { AppHeader } from "@/components/app-header"
+import { api } from "@/convex/_generated/api"
+import { Id } from "@/convex/_generated/dataModel"
+import { convexAuthNextjsToken } from "@convex-dev/auth/nextjs/server"
+import { preloadQuery } from "convex/nextjs"
+import { redirect } from "next/navigation"
 
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
+export default async function App({
+  params,
+}: {
+  params: Promise<{
+    folderId: Id<"folders">
+    canvasId: Id<"canvases">
+    versionId: Id<"canvasVersions">
+  }>
+} & Readonly<{ children: React.ReactNode }>) {
+  const token = await convexAuthNextjsToken()
+  if (!token) redirect("/signin")
+
+  const { folderId, canvasId, versionId } = await params
+
+  const canvas = await preloadQuery(
+    api.public.getCanvasById,
+    { id: canvasId },
+    { token },
+  )
+
+  return (
+    <>
+      <AppHeader preloadedCanvas={canvas} />
+    </>
+  )
 }

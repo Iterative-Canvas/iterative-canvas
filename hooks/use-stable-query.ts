@@ -1,4 +1,4 @@
-import { useQuery, usePaginatedQuery } from "convex/react"
+import { useQuery, usePaginatedQuery, usePreloadedQuery } from "convex/react"
 import { useRef } from "react"
 
 // https://github.com/get-convex/convex-helpers
@@ -28,6 +28,25 @@ export const useStableQuery = ((name, ...args) => {
   // undefined on first load, stale data while loading, fresh data after loading
   return stored.current
 }) as typeof useQuery
+
+/**
+ * TODO: This hook has not been tested yet to see if working as expected.
+ * Drop-in replacement for usePreloadedQuery.
+ * Continues to return the previously loaded data until new data has finished loading.
+ *
+ * @param preloaded - Preloaded query payload from preloadQuery
+ * @returns The latest available data, or undefined on first load
+ */
+export const useStablePreloadedQuery = ((preloaded, ...args) => {
+  const result = usePreloadedQuery(preloaded, ...args)
+  const stored = useRef(result)
+
+  if (result !== undefined) {
+    stored.current = result
+  }
+
+  return stored.current
+}) as typeof usePreloadedQuery
 
 /**
  * Drop-in replacement for usePaginatedQuery for use with a parametrized query.
