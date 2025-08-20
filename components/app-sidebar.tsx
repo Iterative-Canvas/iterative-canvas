@@ -329,7 +329,7 @@ export function AppSidebar({
         open={state.showNewFolderModal}
         onOpenChange={() => dispatch({ type: "TOGGLE_NEW_FOLDER_MODAL" })}
       >
-        <DialogContent>
+        <DialogContent aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle>New Folder</DialogTitle>
           </DialogHeader>
