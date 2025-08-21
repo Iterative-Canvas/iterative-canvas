@@ -1,6 +1,8 @@
 ---
-applyTo: "convex/schema.ts"
+applyTo: "___THIS_PATTERN_MATCHES_NOTHING___"
 ---
+
+_Note_: Update `applyTo` in the frontmatter of this file to have it automatically included as additional context for the specified file types. For example: `**/*.ts,**/*.tsx,**/*.js,**/*.jsx`
 
 # Best Practices & Mental Models for Convex Data Modeling and Schema Design
 
