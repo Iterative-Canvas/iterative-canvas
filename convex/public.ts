@@ -166,6 +166,49 @@ export const renameCanvas = mutation({
   },
 })
 
+export const deleteCanvas = mutation({
+  args: { canvasId: v.id("canvases") },
+  handler: async (ctx, { canvasId }) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+
+    const canvas = await ctx.db.get(canvasId)
+    if (!canvas) throw new Error("Canvas not found")
+    if (canvas.userId !== userId) throw new Error("Not authorized")
+
+    // 1. Get all canvas versions for this canvas
+    const canvasVersions = await ctx.db
+      .query("canvasVersions")
+      .filter((q) => q.eq(q.field("canvasId"), canvasId))
+      .collect()
+
+    // 2. Delete all evals for each canvas version
+    for (const version of canvasVersions) {
+      const evalRecords = await ctx.db
+        .query("evals")
+        .withIndex("canvasVersionId", (q) => q.eq("canvasVersionId", version._id))
+        .collect()
+      
+      for (const evalRecord of evalRecords) {
+        await ctx.db.delete(evalRecord._id)
+      }
+    }
+
+    // 3. Delete all canvas versions
+    for (const version of canvasVersions) {
+      await ctx.db.delete(version._id)
+    }
+
+    // 4. Delete the entity update record
+    if (canvas.entityUpdate) {
+      await ctx.db.delete(canvas.entityUpdate)
+    }
+
+    // 5. Delete the canvas itself
+    await ctx.db.delete(canvasId)
+  },
+})
+
 export const getCurrentUser = query({
   args: {},
   handler: async (ctx) => {

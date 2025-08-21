@@ -75,6 +75,7 @@ export function AppSidebar({
   const newCanvasMutation = useMutation(api.public.createNewCanvas)
   const newFolderMutation = useMutation(api.public.createNewFolder)
   const renameCanvasMutation = useMutation(api.public.renameCanvas)
+  const deleteCanvasMutation = useMutation(api.public.deleteCanvas)
 
   const handleCreateNewCanvas = async () => {
     const { canvasId, versionId } = await newCanvasMutation()
@@ -421,6 +422,34 @@ export function AppSidebar({
               className="cursor-pointer"
             >
               Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={false} onOpenChange={undefined}>
+        <DialogContent aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle>Delete Canvas</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Are you sure you want to delete this canvas? This action cannot be
+            undone. All versions, evaluations, and related data will be
+            permanently deleted.
+          </p>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={undefined}
+              className="cursor-pointer"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={undefined}
+              className="cursor-pointer"
+            >
+              Delete
             </Button>
           </DialogFooter>
         </DialogContent>
