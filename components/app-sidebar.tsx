@@ -140,12 +140,15 @@ export function AppSidebar({
             <FileText className="h-4 w-4 flex-shrink-0" />
             <Input
               value={state.renamingCanvasName}
-              onChange={(e) =>
-                dispatch({
-                  type: "SET_RENAMING_CANVAS_NAME",
-                  payload: e.target.value,
-                })
-              }
+              onChange={(e) => {
+                const value = e.target.value
+                if (value.length <= 75) {
+                  dispatch({
+                    type: "SET_RENAMING_CANVAS_NAME",
+                    payload: value,
+                  })
+                }
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   handleConfirmRename()
@@ -154,12 +157,13 @@ export function AppSidebar({
                 }
               }}
               className="h-6 text-sm"
+              maxLength={75}
               autoFocus
             />
             <Button
               size="sm"
               variant="ghost"
-              className="h-6 w-6 p-0"
+              className="h-6 w-6 p-0 cursor-pointer"
               onClick={handleConfirmRename}
             >
               <Check className="h-3 w-3" />
@@ -167,7 +171,7 @@ export function AppSidebar({
             <Button
               size="sm"
               variant="ghost"
-              className="h-6 w-6 p-0"
+              className="h-6 w-6 p-0 cursor-pointer"
               onClick={handleCancelRename}
             >
               <X className="h-3 w-3" />
@@ -177,10 +181,13 @@ export function AppSidebar({
           <>
             <MenuButtonComponent
               isActive={canvas._id === activeCanvasId}
-              onClick={() =>
-                handleCanvasSelect(folderId as Id<"folders">, canvas._id)
+              onClick={
+                canvas._id === activeCanvasId
+                  ? undefined
+                  : () =>
+                      handleCanvasSelect(folderId as Id<"folders">, canvas._id)
               }
-              className="cursor-pointer"
+              className={canvas._id === activeCanvasId ? "" : "cursor-pointer"}
             >
               <FileText className="h-4 w-4" />
               <span>{canvas.name ?? "Untitled Canvas"}</span>
@@ -198,6 +205,7 @@ export function AppSidebar({
                   className="z-50 bg-background p-2 border rounded-lg"
                 >
                   <DropdownMenuItem
+                    className="cursor-pointer"
                     onClick={() =>
                       handleStartRenaming(
                         canvas._id,
@@ -207,7 +215,7 @@ export function AppSidebar({
                   >
                     <span className="text-sm">Rename</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem>
+                  <DropdownMenuItem className="cursor-pointer">
                     <span className="text-sm">Delete</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
