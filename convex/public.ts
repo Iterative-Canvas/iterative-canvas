@@ -133,6 +133,39 @@ export const createNewFolder = mutation({
   },
 })
 
+export const renameCanvas = mutation({
+  args: { canvasId: v.id("canvases"), name: v.string() },
+  handler: async (ctx, { canvasId, name }) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+
+    const trimmedName = name.trim()
+    if (trimmedName.length === 0) {
+      throw new Error("Canvas name cannot be empty")
+    }
+    if (trimmedName.length > 75) {
+      throw new Error("Canvas name cannot exceed 75 characters")
+    }
+
+    const canvas = await ctx.db.get(canvasId)
+    if (!canvas) throw new Error("Canvas not found")
+    if (canvas.userId !== userId) throw new Error("Not authorized")
+
+    await ctx.db.patch(canvasId, {
+      name: trimmedName,
+    })
+    // TODO: Probably should remove this at some point, since this field
+    // should reflect when material updates were made, rather than cosmetic
+    // metadata changes like renaming. It causes the canvas to "jump" to the
+    // top of the list in the sidebar as soon as it is renamed, which is a
+    // bit jarring. For right now though, keep it b/c it's useful for testing
+    // and debugging and making sure the UI is responsive to changes.
+    await ctx.db.patch(canvas.entityUpdate, {
+      updatedTime: Date.now(),
+    })
+  },
+})
+
 export const getCurrentUser = query({
   args: {},
   handler: async (ctx) => {

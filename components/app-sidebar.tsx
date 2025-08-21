@@ -2,6 +2,7 @@
 
 import { ComponentProps } from "react"
 import {
+  Check,
   FileText,
   Folder,
   FolderPlus,
@@ -9,6 +10,7 @@ import {
   MoreHorizontal,
   Plus,
   Search,
+  X,
 } from "lucide-react"
 import { useMutation, usePreloadedQuery, Preloaded } from "convex/react"
 import { api } from "../convex/_generated/api"
@@ -72,6 +74,7 @@ export function AppSidebar({
 
   const newCanvasMutation = useMutation(api.public.createNewCanvas)
   const newFolderMutation = useMutation(api.public.createNewFolder)
+  const renameCanvasMutation = useMutation(api.public.renameCanvas)
 
   const handleCreateNewCanvas = async () => {
     const { canvasId, versionId } = await newCanvasMutation()
@@ -89,6 +92,131 @@ export function AppSidebar({
     canvasId: Id<"canvases">,
   ) => {
     router.push(`/app/folder/${folderId}/canvas/${canvasId}`)
+  }
+
+  const handleStartRenaming = (
+    canvasId: Id<"canvases">,
+    currentName: string,
+  ) => {
+    dispatch({
+      type: "START_RENAMING_CANVAS",
+      payload: { canvasId, currentName },
+    })
+  }
+
+  const handleConfirmRename = async () => {
+    if (!state.renamingCanvasId || !state.renamingCanvasName.trim()) return
+
+    try {
+      await renameCanvasMutation({
+        canvasId: state.renamingCanvasId,
+        name: state.renamingCanvasName.trim(),
+      })
+      dispatch({ type: "CANCEL_RENAMING_CANVAS" })
+    } catch (error) {
+      console.error("Failed to rename canvas:", error)
+    }
+  }
+
+  const handleCancelRename = () => {
+    dispatch({ type: "CANCEL_RENAMING_CANVAS" })
+  }
+
+  const renderCanvasItem = (
+    canvas: { _id: Id<"canvases">; name?: string; [key: string]: unknown },
+    folderId: Id<"folders"> | "root",
+    isSubItem = false,
+  ) => {
+    const isRenaming = state.renamingCanvasId === canvas._id
+    const MenuButtonComponent = isSubItem
+      ? SidebarMenuSubButton
+      : SidebarMenuButton
+    const MenuItemComponent = isSubItem ? SidebarMenuSubItem : SidebarMenuItem
+
+    return (
+      <MenuItemComponent className="group/canvas" key={canvas._id}>
+        {isRenaming ? (
+          <div className="flex items-center gap-1 px-2 py-1">
+            <FileText className="h-4 w-4 flex-shrink-0" />
+            <Input
+              value={state.renamingCanvasName}
+              onChange={(e) =>
+                dispatch({
+                  type: "SET_RENAMING_CANVAS_NAME",
+                  payload: e.target.value,
+                })
+              }
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleConfirmRename()
+                } else if (e.key === "Escape") {
+                  handleCancelRename()
+                }
+              }}
+              className="h-6 text-sm"
+              autoFocus
+            />
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 w-6 p-0"
+              onClick={handleConfirmRename}
+            >
+              <Check className="h-3 w-3" />
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 w-6 p-0"
+              onClick={handleCancelRename}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+        ) : (
+          <>
+            <MenuButtonComponent
+              isActive={canvas._id === activeCanvasId}
+              onClick={() =>
+                handleCanvasSelect(folderId as Id<"folders">, canvas._id)
+              }
+              className="cursor-pointer"
+            >
+              <FileText className="h-4 w-4" />
+              <span>{canvas.name ?? "Untitled Canvas"}</span>
+            </MenuButtonComponent>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuAction className="opacity-0 group-hover/canvas:opacity-100">
+                  <MoreHorizontal />
+                </SidebarMenuAction>
+              </DropdownMenuTrigger>
+              <DropdownMenuPortal>
+                <DropdownMenuContent
+                  side={isMobile ? "bottom" : "right"}
+                  align={isMobile ? "end" : "start"}
+                  className="z-50 bg-background p-2 border rounded-lg"
+                >
+                  <DropdownMenuItem
+                    onClick={() =>
+                      handleStartRenaming(
+                        canvas._id,
+                        canvas.name ?? "Untitled Canvas",
+                      )
+                    }
+                  >
+                    <span className="text-sm">Rename</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <span className="text-sm">Delete</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenuPortal>
+            </DropdownMenu>
+          </>
+        )}
+      </MenuItemComponent>
+    )
   }
 
   // Separate root and folders
@@ -199,53 +327,13 @@ export function AppSidebar({
                         {state.openFolders[folder.folderId!] && (
                           <SidebarMenuSub>
                             {folder.canvases.length ? (
-                              folder.canvases.map((canvas) => (
-                                <SidebarMenuSubItem
-                                  className="group/canvas"
-                                  key={canvas._id}
-                                >
-                                  <SidebarMenuSubButton
-                                    isActive={canvas._id === activeCanvasId}
-                                    onClick={() =>
-                                      handleCanvasSelect(
-                                        folder.folderId!,
-                                        canvas._id,
-                                      )
-                                    }
-                                    className="cursor-pointer"
-                                  >
-                                    <FileText className="h-4 w-4" />
-                                    <span>
-                                      {canvas.name ?? "Untitled Canvas"}
-                                    </span>
-                                  </SidebarMenuSubButton>
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <SidebarMenuAction className="opacity-0 group-hover/canvas:opacity-100">
-                                        <MoreHorizontal />
-                                      </SidebarMenuAction>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuPortal>
-                                      <DropdownMenuContent
-                                        side={isMobile ? "bottom" : "right"}
-                                        align={isMobile ? "end" : "start"}
-                                        className="z-50 bg-background p-2 border rounded-lg"
-                                      >
-                                        <DropdownMenuItem>
-                                          <span className="text-sm">
-                                            Rename
-                                          </span>
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem>
-                                          <span className="text-sm">
-                                            Delete
-                                          </span>
-                                        </DropdownMenuItem>
-                                      </DropdownMenuContent>
-                                    </DropdownMenuPortal>
-                                  </DropdownMenu>
-                                </SidebarMenuSubItem>
-                              ))
+                              folder.canvases.map((canvas) =>
+                                renderCanvasItem(
+                                  canvas,
+                                  folder.folderId!,
+                                  true,
+                                ),
+                              )
                             ) : (
                               <SidebarMenuSubItem>
                                 <SidebarMenuSubButton aria-disabled>
@@ -272,44 +360,9 @@ export function AppSidebar({
             <SidebarGroup>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {root.canvases.map((canvas) => (
-                    <SidebarMenuItem className="group/canvas" key={canvas._id}>
-                      <SidebarMenuButton
-                        isActive={canvas._id === activeCanvasId}
-                        onClick={() =>
-                          handleCanvasSelect(
-                            "root" as Id<"folders">,
-                            canvas._id,
-                          )
-                        }
-                        className="cursor-pointer"
-                      >
-                        <FileText className="h-4 w-4" />
-                        <span>{canvas.name ?? "Untitled Canvas"}</span>
-                      </SidebarMenuButton>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <SidebarMenuAction className="opacity-0 group-hover/canvas:opacity-100">
-                            <MoreHorizontal />
-                          </SidebarMenuAction>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuPortal>
-                          <DropdownMenuContent
-                            side={isMobile ? "bottom" : "right"}
-                            align={isMobile ? "end" : "start"}
-                            className="z-50 bg-background p-2 border rounded-lg"
-                          >
-                            <DropdownMenuItem>
-                              <span className="text-sm">Rename</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <span className="text-sm">Delete</span>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenuPortal>
-                      </DropdownMenu>
-                    </SidebarMenuItem>
-                  ))}
+                  {root.canvases.map((canvas) =>
+                    renderCanvasItem(canvas, "root", false),
+                  )}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>

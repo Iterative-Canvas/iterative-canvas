@@ -8,6 +8,8 @@ type State = {
   showNewFolderModal: boolean
   newFolderName: string
   openFolders: Record<Id<"folders">, boolean>
+  renamingCanvasId: Id<"canvases"> | null
+  renamingCanvasName: string
 }
 
 type Action =
@@ -16,11 +18,19 @@ type Action =
   | { type: "TOGGLE_NEW_FOLDER_MODAL" }
   | { type: "SET_NEW_FOLDER_NAME"; payload: string }
   | { type: "TOGGLE_FOLDER"; payload: Id<"folders"> }
+  | {
+      type: "START_RENAMING_CANVAS"
+      payload: { canvasId: Id<"canvases">; currentName: string }
+    }
+  | { type: "CANCEL_RENAMING_CANVAS" }
+  | { type: "SET_RENAMING_CANVAS_NAME"; payload: string }
 
 const initialState: State = {
   showNewFolderModal: false,
   newFolderName: "",
   openFolders: {}, // Will be initialized in AppProvider
+  renamingCanvasId: null,
+  renamingCanvasName: "",
 }
 
 function reducer(state: State, action: Action): State {
@@ -45,6 +55,20 @@ function reducer(state: State, action: Action): State {
           [action.payload]: !state.openFolders[action.payload],
         },
       }
+    case "START_RENAMING_CANVAS":
+      return {
+        ...state,
+        renamingCanvasId: action.payload.canvasId,
+        renamingCanvasName: action.payload.currentName,
+      }
+    case "CANCEL_RENAMING_CANVAS":
+      return {
+        ...state,
+        renamingCanvasId: null,
+        renamingCanvasName: "",
+      }
+    case "SET_RENAMING_CANVAS_NAME":
+      return { ...state, renamingCanvasName: action.payload }
     default:
       return state
   }
