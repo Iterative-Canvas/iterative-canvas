@@ -163,7 +163,7 @@ export function AppSidebar({
             <Button
               size="sm"
               variant="ghost"
-              className="h-6 w-6 p-0 cursor-pointer"
+              className="h-6 w-6 p-0 cursor-pointer text-submit hover:text-submit"
               onClick={handleConfirmRename}
             >
               <Check className="h-3 w-3" />
@@ -171,7 +171,7 @@ export function AppSidebar({
             <Button
               size="sm"
               variant="ghost"
-              className="h-6 w-6 p-0 cursor-pointer"
+              className="h-6 w-6 p-0 cursor-pointer text-cancel hover:text-cancel"
               onClick={handleCancelRename}
             >
               <X className="h-3 w-3" />
