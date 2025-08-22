@@ -2,7 +2,6 @@
 
 import { ComponentProps } from "react"
 import {
-  Check,
   FileText,
   Folder,
   FolderPlus,
@@ -10,7 +9,6 @@ import {
   MoreHorizontal,
   Plus,
   Search,
-  X,
 } from "lucide-react"
 import { useMutation, usePreloadedQuery, Preloaded } from "convex/react"
 import { api } from "../convex/_generated/api"
@@ -50,6 +48,7 @@ import {
   DropdownMenuItem,
   DropdownMenuPortal,
 } from "@radix-ui/react-dropdown-menu"
+import { InlineRename } from "@/components/inline-rename"
 
 export function AppSidebar({
   activeFolderId,
@@ -78,6 +77,7 @@ export function AppSidebar({
   const newCanvasMutation = useMutation(api.public.createNewCanvas)
   const newFolderMutation = useMutation(api.public.createNewFolder)
   const renameCanvasMutation = useMutation(api.public.renameCanvas)
+  const renameFolderMutation = useMutation(api.public.renameFolder)
   const deleteCanvasMutation = useMutation(api.public.deleteCanvas)
 
   const handleCreateNewCanvas = async () => {
@@ -124,6 +124,34 @@ export function AppSidebar({
 
   const handleCancelRename = () => {
     dispatch({ type: "CANCEL_RENAMING_CANVAS" })
+  }
+
+  const handleStartRenamingFolder = (
+    folderId: Id<"folders">,
+    currentName: string,
+  ) => {
+    dispatch({
+      type: "START_RENAMING_FOLDER",
+      payload: { folderId, currentName },
+    })
+  }
+
+  const handleConfirmRenameFolder = async () => {
+    if (!state.renamingFolderId || !state.renamingFolderName.trim()) return
+
+    try {
+      await renameFolderMutation({
+        folderId: state.renamingFolderId,
+        name: state.renamingFolderName.trim(),
+      })
+      dispatch({ type: "CANCEL_RENAMING_FOLDER" })
+    } catch (error) {
+      console.error("Failed to rename folder:", error)
+    }
+  }
+
+  const handleCancelRenameFolder = () => {
+    dispatch({ type: "CANCEL_RENAMING_FOLDER" })
   }
 
   const handleOpenDeleteCanvasModal = (
@@ -180,49 +208,15 @@ export function AppSidebar({
     return (
       <MenuItemComponent className="group/canvas" key={canvas._id}>
         {isRenaming ? (
-          <div className="flex items-center gap-1 px-2 py-1">
-            <FileText className="h-4 w-4 flex-shrink-0" />
-            <Input
-              value={state.renamingCanvasName}
-              onChange={(e) => {
-                const value = e.target.value
-                if (value.length <= 75) {
-                  dispatch({
-                    type: "SET_RENAMING_CANVAS_NAME",
-                    payload: value,
-                  })
-                }
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  handleConfirmRename()
-                } else if (e.key === "Escape") {
-                  handleCancelRename()
-                }
-              }}
-              onFocus={(e) => e.currentTarget.select()}
-              className="h-6 text-sm"
-              maxLength={75}
-              autoFocus
-            />
-            <Button
-              size="sm"
-              variant="ghost"
-              disabled={!state.renamingCanvasName.trim()}
-              className="h-6 w-6 p-0 cursor-pointer text-submit hover:text-submit"
-              onClick={handleConfirmRename}
-            >
-              <Check className="h-3 w-3" />
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-6 w-6 p-0 cursor-pointer text-cancel hover:text-cancel"
-              onClick={handleCancelRename}
-            >
-              <X className="h-3 w-3" />
-            </Button>
-          </div>
+          <InlineRename
+            icon={<FileText className="h-4 w-4 flex-shrink-0" />}
+            value={state.renamingCanvasName}
+            onChange={(v) =>
+              dispatch({ type: "SET_RENAMING_CANVAS_NAME", payload: v })
+            }
+            onConfirm={handleConfirmRename}
+            onCancel={handleCancelRename}
+          />
         ) : (
           <>
             <MenuButtonComponent
@@ -350,61 +344,88 @@ export function AppSidebar({
                   <SidebarMenu>
                     {folders.map((folder) => (
                       <SidebarMenuItem key={folder.folderId as string}>
-                        <SidebarMenuButton
-                          className="peer/folder cursor-pointer"
-                          onClick={() =>
-                            dispatch({
-                              type: "TOGGLE_FOLDER",
-                              payload: folder.folderId!,
-                            })
-                          }
-                          aria-expanded={!!state.openFolders[folder.folderId!]}
-                        >
-                          <Folder className="h-4 w-4" />
-                          <span>{folder.folderName}</span>
-                        </SidebarMenuButton>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <SidebarMenuAction className="opacity-0 peer-hover/folder:opacity-100 hover:opacity-100">
-                              <MoreHorizontal />
-                            </SidebarMenuAction>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuPortal>
-                            <DropdownMenuContent
-                              side={isMobile ? "bottom" : "right"}
-                              align={isMobile ? "end" : "start"}
-                              className="z-50 bg-background p-2 border rounded-lg"
+                        {state.renamingFolderId === folder.folderId ? (
+                          <InlineRename
+                            icon={<Folder className="h-4 w-4 flex-shrink-0" />}
+                            value={state.renamingFolderName}
+                            onChange={(v) =>
+                              dispatch({
+                                type: "SET_RENAMING_FOLDER_NAME",
+                                payload: v,
+                              })
+                            }
+                            onConfirm={handleConfirmRenameFolder}
+                            onCancel={handleCancelRenameFolder}
+                          />
+                        ) : (
+                          <>
+                            <SidebarMenuButton
+                              className="peer/folder cursor-pointer"
+                              onClick={() =>
+                                dispatch({
+                                  type: "TOGGLE_FOLDER",
+                                  payload: folder.folderId!,
+                                })
+                              }
+                              aria-expanded={
+                                !!state.openFolders[folder.folderId!]
+                              }
                             >
-                              <DropdownMenuItem>
-                                <span className="text-sm">Rename</span>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem>
-                                <span className="text-sm">Delete</span>
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenuPortal>
-                        </DropdownMenu>
-                        {state.openFolders[folder.folderId!] && (
-                          <SidebarMenuSub>
-                            {folder.canvases.length ? (
-                              folder.canvases.map((canvas) =>
-                                renderCanvasItem(
-                                  canvas,
-                                  folder.folderId!,
-                                  true,
-                                ),
-                              )
-                            ) : (
-                              <SidebarMenuSubItem>
-                                <SidebarMenuSubButton aria-disabled>
-                                  <Ghost className="h-4 w-4" />
-                                  <span className="italic pr-2">
-                                    Empty Folder
-                                  </span>
-                                </SidebarMenuSubButton>
-                              </SidebarMenuSubItem>
+                              <Folder className="h-4 w-4" />
+                              <span>{folder.folderName}</span>
+                            </SidebarMenuButton>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <SidebarMenuAction className="opacity-0 peer-hover/folder:opacity-100 hover:opacity-100">
+                                  <MoreHorizontal />
+                                </SidebarMenuAction>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuPortal>
+                                <DropdownMenuContent
+                                  side={isMobile ? "bottom" : "right"}
+                                  align={isMobile ? "end" : "start"}
+                                  className="z-50 bg-background p-2 border rounded-lg"
+                                >
+                                  <DropdownMenuItem
+                                    className="cursor-pointer"
+                                    onClick={() =>
+                                      handleStartRenamingFolder(
+                                        folder.folderId!,
+                                        folder.folderName,
+                                      )
+                                    }
+                                  >
+                                    <span className="text-sm">Rename</span>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem>
+                                    <span className="text-sm">Delete</span>
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenuPortal>
+                            </DropdownMenu>
+                            {state.openFolders[folder.folderId!] && (
+                              <SidebarMenuSub>
+                                {folder.canvases.length ? (
+                                  folder.canvases.map((canvas) =>
+                                    renderCanvasItem(
+                                      canvas,
+                                      folder.folderId!,
+                                      true,
+                                    ),
+                                  )
+                                ) : (
+                                  <SidebarMenuSubItem>
+                                    <SidebarMenuSubButton aria-disabled>
+                                      <Ghost className="h-4 w-4" />
+                                      <span className="italic pr-2">
+                                        Empty Folder
+                                      </span>
+                                    </SidebarMenuSubButton>
+                                  </SidebarMenuSubItem>
+                                )}
+                              </SidebarMenuSub>
                             )}
-                          </SidebarMenuSub>
+                          </>
                         )}
                       </SidebarMenuItem>
                     ))}

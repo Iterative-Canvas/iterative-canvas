@@ -133,6 +133,28 @@ export const createNewFolder = mutation({
   },
 })
 
+export const renameFolder = mutation({
+  args: { folderId: v.id("folders"), name: v.string() },
+  handler: async (ctx, { folderId, name }) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+
+    const trimmedName = name.trim()
+    if (trimmedName.length === 0) {
+      throw new Error("Folder name cannot be empty")
+    }
+    if (trimmedName.length > 75) {
+      throw new Error("Folder name cannot exceed 75 characters")
+    }
+
+    const folder = await ctx.db.get(folderId)
+    if (!folder) throw new Error("Folder not found")
+    if (folder.userId !== userId) throw new Error("Not authorized")
+
+    await ctx.db.patch(folderId, { name: trimmedName })
+  },
+})
+
 export const renameCanvas = mutation({
   args: { canvasId: v.id("canvases"), name: v.string() },
   handler: async (ctx, { canvasId, name }) => {

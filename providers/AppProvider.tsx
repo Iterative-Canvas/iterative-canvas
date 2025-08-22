@@ -10,6 +10,8 @@ type State = {
   openFolders: Record<Id<"folders">, boolean>
   renamingCanvasId: Id<"canvases"> | null
   renamingCanvasName: string
+  renamingFolderId: Id<"folders"> | null
+  renamingFolderName: string
   showDeleteCanvasModal: boolean
   canvasIdToDelete: Id<"canvases"> | null
   canvasNameToDelete: string
@@ -29,6 +31,12 @@ type Action =
   | { type: "CANCEL_RENAMING_CANVAS" }
   | { type: "SET_RENAMING_CANVAS_NAME"; payload: string }
   | {
+      type: "START_RENAMING_FOLDER"
+      payload: { folderId: Id<"folders">; currentName: string }
+    }
+  | { type: "CANCEL_RENAMING_FOLDER" }
+  | { type: "SET_RENAMING_FOLDER_NAME"; payload: string }
+  | {
       type: "OPEN_DELETE_CANVAS_MODAL"
       payload: { canvasId: Id<"canvases">; canvasName: string }
     }
@@ -43,6 +51,8 @@ const initialState: State = {
   openFolders: {},
   renamingCanvasId: null,
   renamingCanvasName: "",
+  renamingFolderId: null,
+  renamingFolderName: "",
   showDeleteCanvasModal: false,
   canvasIdToDelete: null,
   canvasNameToDelete: "",
@@ -85,6 +95,16 @@ function reducer(state: State, action: Action): State {
       }
     case "SET_RENAMING_CANVAS_NAME":
       return { ...state, renamingCanvasName: action.payload }
+    case "START_RENAMING_FOLDER":
+      return {
+        ...state,
+        renamingFolderId: action.payload.folderId,
+        renamingFolderName: action.payload.currentName,
+      }
+    case "CANCEL_RENAMING_FOLDER":
+      return { ...state, renamingFolderId: null, renamingFolderName: "" }
+    case "SET_RENAMING_FOLDER_NAME":
+      return { ...state, renamingFolderName: action.payload }
     case "OPEN_DELETE_CANVAS_MODAL":
       return {
         ...state,
