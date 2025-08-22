@@ -200,6 +200,7 @@ export function AppSidebar({
                   handleCancelRename()
                 }
               }}
+              onFocus={(e) => e.currentTarget.select()}
               className="h-6 text-sm"
               maxLength={75}
               autoFocus
@@ -207,6 +208,7 @@ export function AppSidebar({
             <Button
               size="sm"
               variant="ghost"
+              disabled={!state.renamingCanvasName.trim()}
               className="h-6 w-6 p-0 cursor-pointer text-submit hover:text-submit"
               onClick={handleConfirmRename}
             >
