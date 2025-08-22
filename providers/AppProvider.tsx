@@ -10,6 +10,10 @@ type State = {
   openFolders: Record<Id<"folders">, boolean>
   renamingCanvasId: Id<"canvases"> | null
   renamingCanvasName: string
+  showDeleteCanvasModal: boolean
+  canvasIdToDelete: Id<"canvases"> | null
+  canvasNameToDelete: string
+  canvasDeleteInProgress: boolean
 }
 
 type Action =
@@ -24,13 +28,25 @@ type Action =
     }
   | { type: "CANCEL_RENAMING_CANVAS" }
   | { type: "SET_RENAMING_CANVAS_NAME"; payload: string }
+  | {
+      type: "OPEN_DELETE_CANVAS_MODAL"
+      payload: { canvasId: Id<"canvases">; canvasName: string }
+    }
+  | { type: "CLOSE_DELETE_CANVAS_MODAL" }
+  | { type: "TOGGLE_DELETE_CANVAS_MODAL" }
+  | { type: "BEGIN_DELETE_CANVAS" }
+  | { type: "FINISH_DELETE_CANVAS" }
 
 const initialState: State = {
   showNewFolderModal: false,
   newFolderName: "",
-  openFolders: {}, // Will be initialized in AppProvider
+  openFolders: {},
   renamingCanvasId: null,
   renamingCanvasName: "",
+  showDeleteCanvasModal: false,
+  canvasIdToDelete: null,
+  canvasNameToDelete: "",
+  canvasDeleteInProgress: false,
 }
 
 function reducer(state: State, action: Action): State {
@@ -69,6 +85,35 @@ function reducer(state: State, action: Action): State {
       }
     case "SET_RENAMING_CANVAS_NAME":
       return { ...state, renamingCanvasName: action.payload }
+    case "OPEN_DELETE_CANVAS_MODAL":
+      return {
+        ...state,
+        showDeleteCanvasModal: true,
+        canvasIdToDelete: action.payload.canvasId,
+        canvasNameToDelete: action.payload.canvasName,
+      }
+    case "CLOSE_DELETE_CANVAS_MODAL":
+      return {
+        ...state,
+        showDeleteCanvasModal: false,
+        canvasIdToDelete: null,
+        canvasNameToDelete: "",
+      }
+    case "TOGGLE_DELETE_CANVAS_MODAL":
+      return {
+        ...state,
+        showDeleteCanvasModal: !state.showDeleteCanvasModal,
+      }
+    case "BEGIN_DELETE_CANVAS":
+      return {
+        ...state,
+        canvasDeleteInProgress: true,
+      }
+    case "FINISH_DELETE_CANVAS":
+      return {
+        ...state,
+        canvasDeleteInProgress: false,
+      }
     default:
       return state
   }

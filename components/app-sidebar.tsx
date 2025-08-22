@@ -69,6 +69,9 @@ export function AppSidebar({
   const { state, dispatch } = useAppContext()
   const { isMobile } = useSidebar()
 
+  // Suppress unused prop lint warning until actively needed
+  void activeFolderId
+
   const foldersWithCanvases = usePreloadedQuery(preloadedFoldersWithCanvases)
   const currentUser = usePreloadedQuery(preloadedCurrentUser)
 
@@ -121,6 +124,46 @@ export function AppSidebar({
 
   const handleCancelRename = () => {
     dispatch({ type: "CANCEL_RENAMING_CANVAS" })
+  }
+
+  const handleOpenDeleteCanvasModal = (
+    canvasId: Id<"canvases">,
+    canvasName: string,
+  ) => {
+    dispatch({
+      type: "OPEN_DELETE_CANVAS_MODAL",
+      payload: { canvasId, canvasName },
+    })
+  }
+
+  const handleCloseDeleteCanvasModal = () => {
+    dispatch({ type: "CLOSE_DELETE_CANVAS_MODAL" })
+  }
+
+  const handleConfirmDeleteCanvas = async () => {
+    if (!state.canvasIdToDelete) return
+    dispatch({ type: "BEGIN_DELETE_CANVAS" })
+    try {
+      const isActive = state.canvasIdToDelete === activeCanvasId
+
+      // If deleting the currently active canvas, then we must redirect elsewhere first and handle
+      // the deletion there, otherwise Convex will reactively update the UI and the page will crash
+      // because the canvas being viewed no longer exists.
+      if (isActive) {
+        dispatch({ type: "FINISH_DELETE_CANVAS" })
+        dispatch({ type: "CLOSE_DELETE_CANVAS_MODAL" })
+        router.replace(
+          `/app/folder/${activeFolderId}/canvas/${activeCanvasId}/delete`,
+        )
+        return
+      }
+
+      await deleteCanvasMutation({ canvasId: state.canvasIdToDelete })
+      dispatch({ type: "FINISH_DELETE_CANVAS" })
+      dispatch({ type: "CLOSE_DELETE_CANVAS_MODAL" })
+    } catch (error) {
+      console.error("Failed to delete canvas:", error)
+    }
   }
 
   const renderCanvasItem = (
@@ -216,7 +259,16 @@ export function AppSidebar({
                   >
                     <span className="text-sm">Rename</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="cursor-pointer">
+                  <DropdownMenuItem
+                    className="cursor-pointer"
+                    disabled={state.canvasDeleteInProgress}
+                    onClick={() =>
+                      handleOpenDeleteCanvasModal(
+                        canvas._id,
+                        canvas.name ?? "Untitled Canvas",
+                      )
+                    }
+                  >
                     <span className="text-sm">Delete</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -295,10 +347,7 @@ export function AppSidebar({
                 <SidebarGroupContent>
                   <SidebarMenu>
                     {folders.map((folder) => (
-                      <SidebarMenuItem
-                        // className="group/folder"
-                        key={folder.folderId as string}
-                      >
+                      <SidebarMenuItem key={folder.folderId as string}>
                         <SidebarMenuButton
                           className="peer/folder cursor-pointer"
                           onClick={() =>
@@ -387,6 +436,9 @@ export function AppSidebar({
         </SidebarContent>
         <SidebarFooter user={currentUser} />
       </Sidebar>
+      {/* Note: I had to patch a bug in the shadcn/ui Dialog component
+       ** https://github.com/radix-ui/primitives/issues/1241#issuecomment-2589438039
+       */}
       <Dialog
         open={state.showNewFolderModal}
         onOpenChange={() => dispatch({ type: "TOGGLE_NEW_FOLDER_MODAL" })}
@@ -408,6 +460,9 @@ export function AppSidebar({
               }
             }}
           />
+          {/* Note: I had to patch a bug in the shadcn/ui Dialog component
+           ** https://github.com/radix-ui/primitives/issues/1241#issuecomment-2589438039
+           */}
           <DialogFooter>
             <Button
               variant="outline"
@@ -426,30 +481,35 @@ export function AppSidebar({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <Dialog open={false} onOpenChange={undefined}>
+      <Dialog
+        open={state.showDeleteCanvasModal}
+        onOpenChange={() => dispatch({ type: "TOGGLE_DELETE_CANVAS_MODAL" })}
+      >
         <DialogContent aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle>Delete Canvas</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Are you sure you want to delete this canvas? This action cannot be
-            undone. All versions, evaluations, and related data will be
-            permanently deleted.
+            Are you sure you want to delete{" "}
+            <span className="font-bold">{state.canvasNameToDelete}</span>? This
+            action cannot be undone. All versions, evaluations, and related data
+            will be permanently deleted.
           </p>
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={undefined}
+              onClick={handleCloseDeleteCanvasModal}
               className="cursor-pointer"
             >
               Cancel
             </Button>
             <Button
               variant="destructive"
-              onClick={undefined}
+              onClick={handleConfirmDeleteCanvas}
               className="cursor-pointer"
+              disabled={state.canvasDeleteInProgress}
             >
-              Delete
+              {state.canvasDeleteInProgress ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>

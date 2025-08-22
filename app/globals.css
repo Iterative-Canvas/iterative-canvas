@@ -180,3 +180,15 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  @keyframes ellipsis {
+    to {
+      width: 3ch;
+    }
+  }
+
+  .animate-ellipsis {
+    animation: ellipsis 1s steps(4, end) infinite;
+  }
+}
