@@ -16,6 +16,10 @@ type State = {
   canvasIdToDelete: Id<"canvases"> | null
   canvasNameToDelete: string
   canvasDeleteInProgress: boolean
+  showDeleteFolderModal: boolean
+  folderIdToDelete: Id<"folders"> | null
+  folderNameToDelete: string
+  folderDeleteInProgress: boolean
 }
 
 type Action =
@@ -44,6 +48,14 @@ type Action =
   | { type: "TOGGLE_DELETE_CANVAS_MODAL" }
   | { type: "BEGIN_DELETE_CANVAS" }
   | { type: "FINISH_DELETE_CANVAS" }
+  | {
+      type: "OPEN_DELETE_FOLDER_MODAL"
+      payload: { folderId: Id<"folders">; folderName: string }
+    }
+  | { type: "CLOSE_DELETE_FOLDER_MODAL" }
+  | { type: "TOGGLE_DELETE_FOLDER_MODAL" }
+  | { type: "BEGIN_DELETE_FOLDER" }
+  | { type: "FINISH_DELETE_FOLDER" }
 
 const initialState: State = {
   showNewFolderModal: false,
@@ -57,6 +69,10 @@ const initialState: State = {
   canvasIdToDelete: null,
   canvasNameToDelete: "",
   canvasDeleteInProgress: false,
+  showDeleteFolderModal: false,
+  folderIdToDelete: null,
+  folderNameToDelete: "",
+  folderDeleteInProgress: false,
 }
 
 function reducer(state: State, action: Action): State {
@@ -133,6 +149,35 @@ function reducer(state: State, action: Action): State {
       return {
         ...state,
         canvasDeleteInProgress: false,
+      }
+    case "OPEN_DELETE_FOLDER_MODAL":
+      return {
+        ...state,
+        showDeleteFolderModal: true,
+        folderIdToDelete: action.payload.folderId,
+        folderNameToDelete: action.payload.folderName,
+      }
+    case "CLOSE_DELETE_FOLDER_MODAL":
+      return {
+        ...state,
+        showDeleteFolderModal: false,
+        folderIdToDelete: null,
+        folderNameToDelete: "",
+      }
+    case "TOGGLE_DELETE_FOLDER_MODAL":
+      return {
+        ...state,
+        showDeleteFolderModal: !state.showDeleteFolderModal,
+      }
+    case "BEGIN_DELETE_FOLDER":
+      return {
+        ...state,
+        folderDeleteInProgress: true,
+      }
+    case "FINISH_DELETE_FOLDER":
+      return {
+        ...state,
+        folderDeleteInProgress: false,
       }
     default:
       return state

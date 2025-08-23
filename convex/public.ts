@@ -4,6 +4,7 @@ import { Id } from "./_generated/dataModel"
 import {
   getCanvasesByFolderIdWithUpdatedTime,
   scaffoldNewCanvas,
+  deleteCanvasDeep,
 } from "./helpers"
 import { v } from "convex/values"
 
@@ -198,36 +199,46 @@ export const deleteCanvas = mutation({
     if (!canvas) throw new Error("Canvas not found")
     if (canvas.userId !== userId) throw new Error("Not authorized")
 
-    // 1. Get all canvas versions for this canvas
-    const canvasVersions = await ctx.db
-      .query("canvasVersions")
-      .filter((q) => q.eq(q.field("canvasId"), canvasId))
+    await deleteCanvasDeep(ctx, canvasId)
+  },
+})
+
+export const deleteFolder = mutation({
+  // If cascade is true, delete all canvases in the folder. Otherwise, just delete the folder record
+  // and move canvases to root (folderId undefined). However, the user requested two destructive options only:
+  // - Delete Folder (keep canvases by moving them to root)
+  // - Delete Folder + Canvases (cascade delete)
+  args: { folderId: v.id("folders"), cascade: v.boolean() },
+  handler: async (ctx, { folderId, cascade }) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+
+    const folder = await ctx.db.get(folderId)
+    if (!folder) throw new Error("Folder not found")
+    if (folder.userId !== userId) throw new Error("Not authorized")
+
+    // Fetch canvases in this folder using the index for performance
+    const canvasesInFolder = await ctx.db
+      .query("canvases")
+      .withIndex("userId_folderId", (q) =>
+        q.eq("userId", userId).eq("folderId", folderId),
+      )
       .collect()
 
-    // 2. Delete all evals for each canvas version
-    for (const version of canvasVersions) {
-      const evalRecords = await ctx.db
-        .query("evals")
-        .withIndex("canvasVersionId", (q) => q.eq("canvasVersionId", version._id))
-        .collect()
-      
-      for (const evalRecord of evalRecords) {
-        await ctx.db.delete(evalRecord._id)
+    if (cascade) {
+      // Delete each canvas deeply. Consider doing sequentially to respect DB limits.
+      for (const c of canvasesInFolder) {
+        await deleteCanvasDeep(ctx, c._id)
+      }
+    } else {
+      // Move canvases to root (folderId undefined)
+      for (const c of canvasesInFolder) {
+        await ctx.db.patch(c._id, { folderId: undefined })
       }
     }
 
-    // 3. Delete all canvas versions
-    for (const version of canvasVersions) {
-      await ctx.db.delete(version._id)
-    }
-
-    // 4. Delete the entity update record
-    if (canvas.entityUpdate) {
-      await ctx.db.delete(canvas.entityUpdate)
-    }
-
-    // 5. Delete the canvas itself
-    await ctx.db.delete(canvasId)
+    // 5. Finally, delete the folder itself
+    await ctx.db.delete(folderId)
   },
 })
 
@@ -238,7 +249,6 @@ export const getCurrentUser = query({
     if (!userId) throw new Error("Not authenticated")
 
     const user = await ctx.db.get(userId)
-
     if (!user) throw new Error("User not found")
 
     return user

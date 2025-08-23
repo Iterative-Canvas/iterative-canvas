@@ -79,6 +79,7 @@ export function AppSidebar({
   const renameCanvasMutation = useMutation(api.public.renameCanvas)
   const renameFolderMutation = useMutation(api.public.renameFolder)
   const deleteCanvasMutation = useMutation(api.public.deleteCanvas)
+  const deleteFolderMutation = useMutation(api.public.deleteFolder)
 
   const handleCreateNewCanvas = async () => {
     const { canvasId, versionId } = await newCanvasMutation()
@@ -191,6 +192,48 @@ export function AppSidebar({
       dispatch({ type: "CLOSE_DELETE_CANVAS_MODAL" })
     } catch (error) {
       console.error("Failed to delete canvas:", error)
+    }
+  }
+
+  const handleOpenDeleteFolderModal = (
+    folderId: Id<"folders">,
+    folderName: string,
+  ) => {
+    dispatch({
+      type: "OPEN_DELETE_FOLDER_MODAL",
+      payload: { folderId, folderName },
+    })
+  }
+
+  const handleCloseDeleteFolderModal = () => {
+    dispatch({ type: "CLOSE_DELETE_FOLDER_MODAL" })
+  }
+
+  const handleConfirmDeleteFolder = async (cascade: boolean) => {
+    if (!state.folderIdToDelete) return
+    dispatch({ type: "BEGIN_DELETE_FOLDER" })
+    try {
+      const isActiveFolder = state.folderIdToDelete === activeFolderId
+
+      if (isActiveFolder) {
+        // Redirect to safe location first, similar to canvas deletion page strategy
+        dispatch({ type: "FINISH_DELETE_FOLDER" })
+        dispatch({ type: "CLOSE_DELETE_FOLDER_MODAL" })
+        const cascadeParam = cascade ? "1" : "0"
+        router.replace(
+          `/app/folder/${state.folderIdToDelete}/delete?cascade=${cascadeParam}`,
+        )
+        return
+      }
+
+      await deleteFolderMutation({
+        folderId: state.folderIdToDelete,
+        cascade,
+      })
+      dispatch({ type: "FINISH_DELETE_FOLDER" })
+      dispatch({ type: "CLOSE_DELETE_FOLDER_MODAL" })
+    } catch (error) {
+      console.error("Failed to delete folder:", error)
     }
   }
 
@@ -397,7 +440,15 @@ export function AppSidebar({
                                   >
                                     <span className="text-sm">Rename</span>
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    className="cursor-pointer"
+                                    onClick={() =>
+                                      handleOpenDeleteFolderModal(
+                                        folder.folderId,
+                                        folder.folderName,
+                                      )
+                                    }
+                                  >
                                     <span className="text-sm">Delete</span>
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
@@ -533,6 +584,48 @@ export function AppSidebar({
               disabled={state.canvasDeleteInProgress}
             >
               {state.canvasDeleteInProgress ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Delete Folder Dialog */}
+      <Dialog
+        open={state.showDeleteFolderModal}
+        onOpenChange={() => dispatch({ type: "TOGGLE_DELETE_FOLDER_MODAL" })}
+      >
+        <DialogContent aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle>Delete Folder</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Are you sure you want to delete{" "}
+            <span className="font-bold">{state.folderNameToDelete}</span>?
+          </p>
+          <DialogFooter className="flex flex-col gap-2 sm:flex-row">
+            <Button
+              variant="outline"
+              onClick={handleCloseDeleteFolderModal}
+              className="cursor-pointer"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => handleConfirmDeleteFolder(false)}
+              className="cursor-pointer"
+              disabled={state.folderDeleteInProgress}
+            >
+              {state.folderDeleteInProgress ? "Deleting..." : "Delete Folder"}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => handleConfirmDeleteFolder(true)}
+              className="cursor-pointer"
+              disabled={state.folderDeleteInProgress}
+            >
+              {state.folderDeleteInProgress
+                ? "Deleting..."
+                : "Delete Folder + Canvases"}
             </Button>
           </DialogFooter>
         </DialogContent>
