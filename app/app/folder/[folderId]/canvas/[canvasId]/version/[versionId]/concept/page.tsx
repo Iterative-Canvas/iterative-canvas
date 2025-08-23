@@ -61,12 +61,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
-import {
   ResizablePanelGroup,
   ResizablePanel,
   ResizableHandle,
@@ -75,6 +69,7 @@ import {
   ImperativePanelGroupHandle,
   ImperativePanelHandle,
 } from "react-resizable-panels"
+import { SplitButton } from "@/components/split-button"
 
 const actionButtons = [
   { icon: HistoryIcon, label: "History" },
@@ -189,71 +184,6 @@ const initialRequirements: Requirement[] = [
   },
 ]
 
-const RunButton = ({
-  disabled,
-  loading,
-  tooltipText,
-  onRunClick,
-  onRunWithoutEvalClick,
-}: {
-  disabled: boolean
-  loading: boolean
-  tooltipText: string
-  onRunClick: () => void
-  onRunWithoutEvalClick: () => void
-}) => {
-  const buttonGroup = (
-    <div
-      className="inline-flex items-center rounded-md shadow-xs"
-      aria-disabled={disabled}
-    >
-      <Button
-        className="rounded-r-none bg-primary hover:bg-primary/90 h-8 disabled:bg-primary/50 disabled:cursor-not-allowed"
-        disabled={disabled}
-        onClick={onRunClick}
-      >
-        {!loading ? (
-          <Send className="h-4 w-4" />
-        ) : (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        )}
-      </Button>
-      <Separator orientation="vertical" className="h-4 bg-white/20" />
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            size="icon"
-            className="rounded-l-none bg-primary hover:bg-primary/90 h-8 w-8 disabled:bg-primary/50 disabled:cursor-not-allowed"
-            disabled={disabled}
-          >
-            <ChevronDown className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={onRunWithoutEvalClick}>
-            Run Without Evaluating Requirements
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
-  )
-
-  if (disabled && !loading) {
-    return (
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>{buttonGroup}</TooltipTrigger>
-          <TooltipContent>
-            <p>{tooltipText}</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    )
-  }
-
-  return buttonGroup
-}
-
 const RefinePopover = () => {
   const [includePrompt, setIncludePrompt] = useState(true)
   const [includeEvalResults, setIncludeEvalResults] = useState(true)
@@ -366,13 +296,18 @@ const RefinePopover = () => {
             )}
           </div>
           <div className="flex justify-end">
-            <RunButton
+            <SplitButton
               disabled={isDisabled}
               loading={false}
               tooltipText="Select at least one element to refine."
-              onRunClick={() => {}}
-              onRunWithoutEvalClick={() => {}}
-            />
+            >
+              {/* Primary action */}
+              <Button onClick={() => {}}>Run</Button>
+              {/* Secondary action */}
+              <Button onClick={() => {}}>
+                Run Without Evaluating Requirements
+              </Button>
+            </SplitButton>
           </div>
         </div>
       </PopoverContent>
@@ -681,16 +616,10 @@ export default function App() {
     }
   }
 
-  const {
-    completion,
-    input,
-    handleInputChange,
-    handleSubmit,
-    isLoading,
-    error,
-  } = useCompletion({
-    api: "/api/generate-response",
-  })
+  const { completion, input, handleInputChange, handleSubmit, isLoading } =
+    useCompletion({
+      api: "/api/generate-response",
+    })
 
   useEffect(() => {
     if (completion) setCanvas(completion)
@@ -967,13 +896,18 @@ export default function App() {
                           />
                         ))}
                       </div>
-                      <RunButton
+                      <SplitButton
                         disabled={!input || isLoading}
                         loading={isLoading}
                         tooltipText="Please enter a prompt to run."
-                        onRunClick={handleSubmit}
-                        onRunWithoutEvalClick={() => {}}
-                      />
+                      >
+                        <Button onClick={handleSubmit}>
+                          <Send className="h-4 w-4" />
+                        </Button>
+                        <Button onClick={() => {}}>
+                          Run Without Evaluating Requirements
+                        </Button>
+                      </SplitButton>
                     </div>
                   </CardContent>
                 </Card>

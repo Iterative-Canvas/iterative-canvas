@@ -49,6 +49,7 @@ import {
   DropdownMenuPortal,
 } from "@radix-ui/react-dropdown-menu"
 import { InlineRename } from "@/components/inline-rename"
+import { SplitButton } from "@/components/split-button"
 
 export function AppSidebar({
   activeFolderId,
@@ -534,9 +535,6 @@ export function AppSidebar({
               }
             }}
           />
-          {/* Note: I had to patch a bug in the shadcn/ui Dialog component
-           ** https://github.com/radix-ui/primitives/issues/1241#issuecomment-2589438039
-           */}
           <DialogFooter>
             <Button
               variant="outline"
@@ -588,7 +586,6 @@ export function AppSidebar({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      {/* Delete Folder Dialog */}
       <Dialog
         open={state.showDeleteFolderModal}
         onOpenChange={() => dispatch({ type: "TOGGLE_DELETE_FOLDER_MODAL" })}
@@ -609,24 +606,26 @@ export function AppSidebar({
             >
               Cancel
             </Button>
-            <Button
-              variant="destructive"
-              onClick={() => handleConfirmDeleteFolder(false)}
-              className="cursor-pointer"
+            <SplitButton
               disabled={state.folderDeleteInProgress}
-            >
-              {state.folderDeleteInProgress ? "Deleting..." : "Delete Folder"}
-            </Button>
-            <Button
               variant="destructive"
-              onClick={() => handleConfirmDeleteFolder(true)}
-              className="cursor-pointer"
-              disabled={state.folderDeleteInProgress}
-            >
-              {state.folderDeleteInProgress
-                ? "Deleting..."
-                : "Delete Folder + Canvases"}
-            </Button>
+              moreLabel="More delete options"
+              items={[
+                {
+                  label: state.folderDeleteInProgress
+                    ? "Deleting..."
+                    : "Delete Folder",
+                  onClick: () => handleConfirmDeleteFolder(false),
+                },
+                {
+                  label: state.folderDeleteInProgress
+                    ? "Deleting..."
+                    : "Delete Folder + Canvases",
+                  onClick: () => handleConfirmDeleteFolder(true),
+                  destructive: true,
+                },
+              ]}
+            />
           </DialogFooter>
         </DialogContent>
       </Dialog>
