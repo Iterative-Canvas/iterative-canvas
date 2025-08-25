@@ -1,3 +1,4 @@
+import { AppContentArea } from "@/components/app-content-area"
 import { AppHeader } from "@/components/app-header"
 import { api } from "@/convex/_generated/api"
 import { Id } from "@/convex/_generated/dataModel"
@@ -28,6 +29,7 @@ export default async function App({
   return (
     <>
       <AppHeader preloadedCanvas={canvas} />
+      <AppContentArea />
     </>
   )
 }
