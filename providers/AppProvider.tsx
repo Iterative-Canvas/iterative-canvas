@@ -5,6 +5,7 @@ import { useParams } from "next/navigation"
 import React, { createContext, useReducer, useContext, Dispatch } from "react"
 
 type State = {
+  activeFolderId?: string
   showNewFolderModal: boolean
   newFolderName: string
   openFolders: Record<Id<"folders">, boolean>
@@ -23,6 +24,7 @@ type State = {
 }
 
 type Action =
+  | { type: "SET_ACTIVE_FOLDER_ID"; payload: string }
   | { type: "OPEN_NEW_FOLDER_MODAL" }
   | { type: "CLOSE_NEW_FOLDER_MODAL" }
   | { type: "TOGGLE_NEW_FOLDER_MODAL" }
@@ -58,6 +60,7 @@ type Action =
   | { type: "FINISH_DELETE_FOLDER" }
 
 const initialState: State = {
+  activeFolderId: undefined,
   showNewFolderModal: false,
   newFolderName: "",
   openFolders: {},
@@ -77,6 +80,8 @@ const initialState: State = {
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
+    case "SET_ACTIVE_FOLDER_ID":
+      return { ...state, activeFolderId: action.payload }
     case "OPEN_NEW_FOLDER_MODAL":
       return { ...state, showNewFolderModal: true, newFolderName: "" }
     case "CLOSE_NEW_FOLDER_MODAL":
@@ -196,6 +201,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const { folderId: activeFolderId } = useParams<{ folderId: string }>()
   const [state, dispatch] = useReducer(reducer, {
     ...initialState,
+    activeFolderId,
     openFolders: activeFolderId === "root" ? {} : { [activeFolderId]: true },
   })
   return (

@@ -69,7 +69,11 @@ export function AppSidebar({
   const { state, dispatch } = useAppContext()
   const { isMobile } = useSidebar()
 
-  // Suppress unused prop lint warning until actively needed
+  // Suppress unused prop lint warning - Right now, activeFolderId is determined in the
+  // AppProvider and managed in global state. Just keeping this here for now to remind
+  // myself that I'm not in love with the current approach. Might want to refactor later.
+  // folderId needs to be managed in global state right now because of the "move canvas"
+  // feature that is trying to avoid full page re-renders.
   void activeFolderId
 
   const foldersWithCanvases = usePreloadedQuery(preloadedFoldersWithCanvases)
@@ -81,6 +85,7 @@ export function AppSidebar({
   const renameFolderMutation = useMutation(api.public.renameFolder)
   const deleteCanvasMutation = useMutation(api.public.deleteCanvas)
   const deleteFolderMutation = useMutation(api.public.deleteFolder)
+  const moveCanvasToFolderMutation = useMutation(api.public.moveCanvasToFolder)
 
   const handleCreateNewCanvas = async () => {
     const { canvasId, versionId } = await newCanvasMutation()
@@ -183,7 +188,7 @@ export function AppSidebar({
         dispatch({ type: "FINISH_DELETE_CANVAS" })
         dispatch({ type: "CLOSE_DELETE_CANVAS_MODAL" })
         router.replace(
-          `/app/folder/${activeFolderId}/canvas/${activeCanvasId}/delete`,
+          `/app/folder/${state.activeFolderId}/canvas/${activeCanvasId}/delete`,
         )
         return
       }
@@ -214,7 +219,7 @@ export function AppSidebar({
     if (!state.folderIdToDelete) return
     dispatch({ type: "BEGIN_DELETE_FOLDER" })
     try {
-      const isActiveFolder = state.folderIdToDelete === activeFolderId
+      const isActiveFolder = state.folderIdToDelete === state.activeFolderId
 
       if (isActiveFolder) {
         // Redirect to safe location first, similar to canvas deletion page strategy
@@ -235,6 +240,30 @@ export function AppSidebar({
       dispatch({ type: "CLOSE_DELETE_FOLDER_MODAL" })
     } catch (error) {
       console.error("Failed to delete folder:", error)
+    }
+  }
+
+  const handleMoveCanvasToFolder = async (
+    canvasId: Id<"canvases">,
+    targetFolderId: Id<"folders"> | "root",
+  ) => {
+    try {
+      await moveCanvasToFolderMutation({
+        canvasId,
+        folderId: targetFolderId === "root" ? undefined : targetFolderId,
+      })
+      // If the moved canvas is the active one, we need to update the URL to reflect the new folder
+      if (canvasId === activeCanvasId) {
+        // router.push(`/app/folder/${targetFolderId}/canvas/${canvasId}`)
+        dispatch({ type: "SET_ACTIVE_FOLDER_ID", payload: targetFolderId })
+        window.history.replaceState(
+          {},
+          "",
+          `/app/folder/${targetFolderId}/canvas/${canvasId}`,
+        )
+      }
+    } catch (error) {
+      console.error("Failed to move canvas:", error)
     }
   }
 

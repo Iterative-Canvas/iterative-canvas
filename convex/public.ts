@@ -281,3 +281,23 @@ export const getActiveVersionIdForCanvas = query({
     return { versionId: draft.parentVersionId }
   },
 })
+
+export const moveCanvasToFolder = mutation({
+  args: { canvasId: v.id("canvases"), folderId: v.optional(v.id("folders")) },
+  handler: async (ctx, { canvasId, folderId }) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+
+    const canvas = await ctx.db.get(canvasId)
+    if (!canvas) throw new Error(`Canvas ${canvasId} not found`)
+    if (canvas.userId !== userId) throw new Error("Not authorized")
+
+    if (folderId) {
+      const folder = await ctx.db.get(folderId)
+      if (!folder) throw new Error(`Folder ${folderId} not found`)
+      if (folder.userId !== userId) throw new Error("Not authorized")
+    }
+
+    await ctx.db.patch(canvasId, { folderId })
+  },
+})
