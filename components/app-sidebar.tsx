@@ -50,20 +50,14 @@ import {
 } from "@radix-ui/react-dropdown-menu"
 import { InlineRename } from "@/components/inline-rename"
 import { SplitButton } from "@/components/split-button"
-import { DnDProvider, useDraggable, useDropZone } from "../dnd"
+import { useDraggable } from "@/hooks/use-draggable"
+import { useDropZone } from "@/hooks/use-drop-zone"
+import { DndProvider } from "@/providers/DndProvider"
 
-// ─────────────────────────────────────────────────────────────
-// Types used by helper components
-// ─────────────────────────────────────────────────────────────
 type CanvasLike = {
   _id: Id<"canvases">
   name?: string
   [key: string]: unknown
-}
-
-type DragEnvelope = {
-  type: string
-  data: { canvasId: Id<"canvases">; fromFolderId: Id<"folders"> | "root" }
 }
 
 type FolderWithCanvases = {
@@ -72,9 +66,11 @@ type FolderWithCanvases = {
   canvases: CanvasLike[]
 }
 
-// ─────────────────────────────────────────────────────────────
-// Shared hook to move a canvas between folders
-// ─────────────────────────────────────────────────────────────
+type CanvasDragData = {
+  canvasId: Id<"canvases">
+  fromFolderId: Id<"folders"> | "root"
+}
+
 function useMoveCanvasToFolder(activeCanvasId: Id<"canvases">) {
   const moveCanvasToFolderMutation = useMutation(api.public.moveCanvasToFolder)
 
@@ -97,9 +93,6 @@ function useMoveCanvasToFolder(activeCanvasId: Id<"canvases">) {
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-// Hoisted helper components
-// ─────────────────────────────────────────────────────────────
 export function CanvasRow({
   canvas,
   folderId,
@@ -116,7 +109,7 @@ export function CanvasRow({
   const { isMobile } = useSidebar()
 
   const isRenaming = state.renamingCanvasId === canvas._id
-  const { dragProps, isDragging } = useDraggable({
+  const { dragProps, isDragging } = useDraggable<CanvasDragData>({
     type: `canvas:${folderId}`,
     data: { canvasId: canvas._id, fromFolderId: folderId },
     effectAllowed: "move",
@@ -169,9 +162,9 @@ export function CanvasRow({
                 : () =>
                     router.push(`/app/folder/${folderId}/canvas/${canvas._id}`)
             }
-            className={`${
-              canvas._id === activeCanvasId ? "" : "cursor-pointer"
-            } ${isDragging ? "opacity-60" : ""}`}
+            className={`$
+              {canvas._id === activeCanvasId ? "" : "cursor-pointer"}
+            ${isDragging ? "opacity-60" : ""}`}
           >
             <FileText className="h-4 w-4" />
             <span>{canvas.name ?? "Untitled Canvas"}</span>
@@ -248,11 +241,10 @@ export function FolderRow({
       .map((f) => `canvas:${f.folderId}`),
   ]
 
-  const { dropProps, isOver } = useDropZone({
+  const { dropProps, isOver } = useDropZone<CanvasDragData>({
     accept: acceptTypes,
-    onDrop: (env: DragEnvelope) => {
-      const { canvasId, fromFolderId } =
-        env.data || ({} as DragEnvelope["data"])
+    onDrop: (env) => {
+      const { canvasId, fromFolderId } = env.data
       if (!canvasId || !folder.folderId) return
       if (fromFolderId === folder.folderId) return
       void moveCanvas(canvasId, folder.folderId)
@@ -395,11 +387,10 @@ export function RootDropZone({
   const moveCanvas = useMoveCanvasToFolder(activeCanvasId)
 
   const acceptFromFolders = folders.map((f) => `canvas:${f.folderId}`)
-  const { dropProps, isOver } = useDropZone({
+  const { dropProps, isOver } = useDropZone<CanvasDragData>({
     accept: acceptFromFolders,
-    onDrop: (env: DragEnvelope) => {
-      const { canvasId, fromFolderId } =
-        env.data || ({} as DragEnvelope["data"])
+    onDrop: (env) => {
+      const { canvasId, fromFolderId } = env.data
       if (!canvasId) return
       if (fromFolderId === "root") return
       void moveCanvas(canvasId, "root")
@@ -445,7 +436,6 @@ export function AppSidebar({
   const deleteCanvasMutation = useMutation(api.public.deleteCanvas)
   const deleteFolderMutation = useMutation(api.public.deleteFolder)
 
-  // Separate root and folders
   const allFolders = (foldersWithCanvases ??
     []) as unknown as FolderWithCanvases[]
   const root = allFolders.find((f) => f.folderId === null)
@@ -532,7 +522,7 @@ export function AppSidebar({
   // if (!mounted) return null
 
   return (
-    <DnDProvider>
+    <DndProvider>
       <Sidebar {...props}>
         <SidebarHeader>
           <div className="px-2 py-2">
@@ -751,6 +741,6 @@ export function AppSidebar({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </DnDProvider>
+    </DndProvider>
   )
 }
