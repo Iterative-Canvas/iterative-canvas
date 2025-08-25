@@ -1,6 +1,6 @@
 "use client"
 
-import { ComponentProps } from "react"
+import { ComponentProps, type ReactNode } from "react"
 import {
   FileText,
   Folder,
@@ -50,15 +50,15 @@ import {
 } from "@radix-ui/react-dropdown-menu"
 import { InlineRename } from "@/components/inline-rename"
 import { SplitButton } from "@/components/split-button"
+// Drag & Drop toolkit (native HTML5)
+import { DnDProvider, useDraggable, useDropZone } from "../dnd"
 
 export function AppSidebar({
-  activeFolderId,
   activeCanvasId,
   preloadedFoldersWithCanvases,
   preloadedCurrentUser,
   ...props
 }: {
-  activeFolderId: Id<"folders">
   activeCanvasId: Id<"canvases">
   preloadedFoldersWithCanvases: Preloaded<
     typeof api.public.getFoldersWithCanvases
@@ -69,15 +69,13 @@ export function AppSidebar({
   const { state, dispatch } = useAppContext()
   const { isMobile } = useSidebar()
 
-  // Suppress unused prop lint warning - Right now, activeFolderId is determined in the
-  // AppProvider and managed in global state. Just keeping this here for now to remind
-  // myself that I'm not in love with the current approach. Might want to refactor later.
-  // folderId needs to be managed in global state right now because of the "move canvas"
-  // feature that is trying to avoid full page re-renders.
-  void activeFolderId
-
   const foldersWithCanvases = usePreloadedQuery(preloadedFoldersWithCanvases)
   const currentUser = usePreloadedQuery(preloadedCurrentUser)
+
+  const activeFolderId =
+    foldersWithCanvases.find((folder) =>
+      folder.canvases.some((canvas) => canvas._id === activeCanvasId),
+    )?.folderId ?? "root"
 
   const newCanvasMutation = useMutation(api.public.createNewCanvas)
   const newFolderMutation = useMutation(api.public.createNewFolder)
@@ -86,6 +84,31 @@ export function AppSidebar({
   const deleteCanvasMutation = useMutation(api.public.deleteCanvas)
   const deleteFolderMutation = useMutation(api.public.deleteFolder)
   const moveCanvasToFolderMutation = useMutation(api.public.moveCanvasToFolder)
+
+  // DnD envelope and data shapes
+  type CanvasLike = {
+    _id: Id<"canvases">
+    name?: string
+    [key: string]: unknown
+  }
+  type DragEnvelope = {
+    type: string
+    data: { canvasId: Id<"canvases">; fromFolderId: Id<"folders"> | "root" }
+  }
+  type FolderWithCanvases = {
+    folderId: Id<"folders"> | null
+    folderName: string
+    canvases: CanvasLike[]
+  }
+
+  // Separate root and folders
+  const allFolders = (foldersWithCanvases ??
+    []) as unknown as FolderWithCanvases[]
+  const root = allFolders.find((f) => f.folderId === null)
+  const folders = allFolders.filter(
+    (f): f is FolderWithCanvases & { folderId: Id<"folders"> } =>
+      f.folderId !== null,
+  )
 
   const handleCreateNewCanvas = async () => {
     const { canvasId, versionId } = await newCanvasMutation()
@@ -188,7 +211,7 @@ export function AppSidebar({
         dispatch({ type: "FINISH_DELETE_CANVAS" })
         dispatch({ type: "CLOSE_DELETE_CANVAS_MODAL" })
         router.replace(
-          `/app/folder/${state.activeFolderId}/canvas/${activeCanvasId}/delete`,
+          `/app/folder/${activeFolderId}/canvas/${activeCanvasId}/delete`,
         )
         return
       }
@@ -219,7 +242,7 @@ export function AppSidebar({
     if (!state.folderIdToDelete) return
     dispatch({ type: "BEGIN_DELETE_FOLDER" })
     try {
-      const isActiveFolder = state.folderIdToDelete === state.activeFolderId
+      const isActiveFolder = state.folderIdToDelete === activeFolderId
 
       if (isActiveFolder) {
         // Redirect to safe location first, similar to canvas deletion page strategy
@@ -255,7 +278,6 @@ export function AppSidebar({
       // If the moved canvas is the active one, we need to update the URL to reflect the new folder
       if (canvasId === activeCanvasId) {
         // router.push(`/app/folder/${targetFolderId}/canvas/${canvasId}`)
-        dispatch({ type: "SET_ACTIVE_FOLDER_ID", payload: targetFolderId })
         window.history.replaceState(
           {},
           "",
@@ -267,12 +289,26 @@ export function AppSidebar({
     }
   }
 
-  const renderCanvasItem = (
-    canvas: { _id: Id<"canvases">; name?: string; [key: string]: unknown },
-    folderId: Id<"folders"> | "root",
+  // ─────────────────────────────────────────────────────────────
+  // DnD-aware row components
+  // ─────────────────────────────────────────────────────────────
+  const CanvasRow = ({
+    canvas,
+    folderId,
     isSubItem = false,
-  ) => {
+  }: {
+    canvas: CanvasLike
+    folderId: Id<"folders"> | "root"
+    isSubItem?: boolean
+  }) => {
     const isRenaming = state.renamingCanvasId === canvas._id
+    const { dragProps, isDragging } = useDraggable({
+      // Encode source in the type to refine valid targets
+      type: `canvas:${folderId}`,
+      data: { canvasId: canvas._id, fromFolderId: folderId },
+      effectAllowed: "move",
+    })
+
     const MenuButtonComponent = isSubItem
       ? SidebarMenuSubButton
       : SidebarMenuButton
@@ -281,26 +317,35 @@ export function AppSidebar({
     return (
       <MenuItemComponent className="group/canvas" key={canvas._id}>
         {isRenaming ? (
-          <InlineRename
-            icon={<FileText className="h-4 w-4 flex-shrink-0" />}
-            value={state.renamingCanvasName}
-            onChange={(v) =>
-              dispatch({ type: "SET_RENAMING_CANVAS_NAME", payload: v })
-            }
-            onConfirm={handleConfirmRename}
-            onCancel={handleCancelRename}
-          />
+          // Disable dragging interactions around the rename input to avoid selection/reset issues
+          <div draggable={false} onDragStart={(e) => e.stopPropagation()}>
+            <InlineRename
+              icon={<FileText className="h-4 w-4 flex-shrink-0" />}
+              value={state.renamingCanvasName}
+              onChange={(v) => {
+                dispatch({ type: "SET_RENAMING_CANVAS_NAME", payload: v })
+              }}
+              onConfirm={handleConfirmRename}
+              onCancel={handleCancelRename}
+            />
+          </div>
         ) : (
           <>
             <MenuButtonComponent
+              {...dragProps}
               isActive={canvas._id === activeCanvasId}
               onClick={
                 canvas._id === activeCanvasId
                   ? undefined
                   : () =>
-                      handleCanvasSelect(folderId as Id<"folders">, canvas._id)
+                      handleCanvasSelect(
+                        folderId as unknown as Id<"folders">,
+                        canvas._id,
+                      )
               }
-              className={canvas._id === activeCanvasId ? "" : "cursor-pointer"}
+              className={`${
+                canvas._id === activeCanvasId ? "" : "cursor-pointer"
+              } ${isDragging ? "opacity-60" : ""}`}
             >
               <FileText className="h-4 w-4" />
               <span>{canvas.name ?? "Untitled Canvas"}</span>
@@ -349,9 +394,154 @@ export function AppSidebar({
     )
   }
 
-  // Separate root and folders
-  const root = foldersWithCanvases?.find((f) => f.folderId === null)
-  const folders = foldersWithCanvases?.filter((f) => f.folderId !== null) ?? []
+  const FolderRow = ({
+    folder,
+  }: {
+    folder: FolderWithCanvases & { folderId: Id<"folders"> }
+  }) => {
+    // Accept drags from root and all other folders except this folder
+    const acceptTypes = [
+      "canvas:root",
+      ...folders
+        .filter((f) => f.folderId !== folder.folderId)
+        .map((f) => `canvas:${f.folderId}`),
+    ]
+    const { dropProps, isOver } = useDropZone({
+      accept: acceptTypes,
+      onDrop: (env: DragEnvelope) => {
+        const { canvasId, fromFolderId } =
+          env.data || ({} as DragEnvelope["data"])
+        if (!canvasId || !folder.folderId) return
+        if (fromFolderId === folder.folderId) return
+        handleMoveCanvasToFolder(canvasId, folder.folderId)
+      },
+      dropEffect: "move",
+    })
+
+    return (
+      <SidebarMenuItem key={`${folder.folderId}`}>
+        {state.renamingFolderId === folder.folderId ? (
+          <div draggable={false} onDragStart={(e) => e.stopPropagation()}>
+            <InlineRename
+              icon={<Folder className="h-4 w-4 flex-shrink-0" />}
+              value={state.renamingFolderName}
+              onChange={(v) =>
+                dispatch({
+                  type: "SET_RENAMING_FOLDER_NAME",
+                  payload: v,
+                })
+              }
+              onConfirm={handleConfirmRenameFolder}
+              onCancel={handleCancelRenameFolder}
+            />
+          </div>
+        ) : (
+          <>
+            <SidebarMenuButton
+              {...dropProps}
+              className={`peer/folder cursor-pointer ${
+                isOver ? "ring-2 ring-muted-foreground rounded-md" : ""
+              }`}
+              onClick={() =>
+                dispatch({
+                  type: "TOGGLE_FOLDER",
+                  payload: folder.folderId,
+                })
+              }
+              aria-expanded={!!state.openFolders[folder.folderId]}
+            >
+              <Folder className="h-4 w-4" />
+              <span>{folder.folderName}</span>
+            </SidebarMenuButton>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuAction className="opacity-0 peer-hover/folder:opacity-100 hover:opacity-100">
+                  <MoreHorizontal />
+                </SidebarMenuAction>
+              </DropdownMenuTrigger>
+              <DropdownMenuPortal>
+                <DropdownMenuContent
+                  side={isMobile ? "bottom" : "right"}
+                  align={isMobile ? "end" : "start"}
+                  className="z-50 bg-background p-2 border rounded-lg"
+                >
+                  <DropdownMenuItem
+                    className="cursor-pointer"
+                    onClick={() =>
+                      handleStartRenamingFolder(
+                        folder.folderId!,
+                        folder.folderName,
+                      )
+                    }
+                  >
+                    <span className="text-sm">Rename</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="cursor-pointer"
+                    onClick={() =>
+                      handleOpenDeleteFolderModal(
+                        folder.folderId!,
+                        folder.folderName,
+                      )
+                    }
+                  >
+                    <span className="text-sm">Delete</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenuPortal>
+            </DropdownMenu>
+            {state.openFolders[folder.folderId] && (
+              <SidebarMenuSub>
+                {folder.canvases.length ? (
+                  folder.canvases.map((canvas) => (
+                    <CanvasRow
+                      key={`${canvas._id}`}
+                      canvas={canvas}
+                      folderId={folder.folderId}
+                      isSubItem
+                    />
+                  ))
+                ) : (
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton aria-disabled>
+                      <Ghost className="h-4 w-4" />
+                      <span className="italic pr-2">Empty Folder</span>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                )}
+              </SidebarMenuSub>
+            )}
+          </>
+        )}
+      </SidebarMenuItem>
+    )
+  }
+
+  const RootDropZone = ({ children }: { children: ReactNode }) => {
+    // Accept only canvases dragged from folders (not from root)
+    const acceptFromFolders = folders.map((f) => `canvas:${f.folderId}`)
+    const { dropProps, isOver } = useDropZone({
+      accept: acceptFromFolders,
+      onDrop: (env: DragEnvelope) => {
+        const { canvasId, fromFolderId } =
+          env.data || ({} as DragEnvelope["data"])
+        if (!canvasId) return
+        if (fromFolderId === "root") return
+        handleMoveCanvasToFolder(canvasId, "root")
+      },
+      dropEffect: "move",
+    })
+    return (
+      <div
+        {...dropProps}
+        className={
+          isOver ? "ring-2 ring-muted-foreground rounded-md" : undefined
+        }
+      >
+        {children}
+      </div>
+    )
+  }
 
   // Note: Probably don't need this ChatGPT generated snippet below
   // but keeping it around just in case.
@@ -362,7 +552,7 @@ export function AppSidebar({
   // if (!mounted) return null
 
   return (
-    <>
+    <DnDProvider>
       <Sidebar {...props}>
         <SidebarHeader>
           <div className="px-2 py-2">
@@ -416,99 +606,7 @@ export function AppSidebar({
                 <SidebarGroupContent>
                   <SidebarMenu>
                     {folders.map((folder) => (
-                      <SidebarMenuItem key={folder.folderId as string}>
-                        {state.renamingFolderId === folder.folderId ? (
-                          <InlineRename
-                            icon={<Folder className="h-4 w-4 flex-shrink-0" />}
-                            value={state.renamingFolderName}
-                            onChange={(v) =>
-                              dispatch({
-                                type: "SET_RENAMING_FOLDER_NAME",
-                                payload: v,
-                              })
-                            }
-                            onConfirm={handleConfirmRenameFolder}
-                            onCancel={handleCancelRenameFolder}
-                          />
-                        ) : (
-                          <>
-                            <SidebarMenuButton
-                              className="peer/folder cursor-pointer"
-                              onClick={() =>
-                                dispatch({
-                                  type: "TOGGLE_FOLDER",
-                                  payload: folder.folderId!,
-                                })
-                              }
-                              aria-expanded={
-                                !!state.openFolders[folder.folderId!]
-                              }
-                            >
-                              <Folder className="h-4 w-4" />
-                              <span>{folder.folderName}</span>
-                            </SidebarMenuButton>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <SidebarMenuAction className="opacity-0 peer-hover/folder:opacity-100 hover:opacity-100">
-                                  <MoreHorizontal />
-                                </SidebarMenuAction>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuPortal>
-                                <DropdownMenuContent
-                                  side={isMobile ? "bottom" : "right"}
-                                  align={isMobile ? "end" : "start"}
-                                  className="z-50 bg-background p-2 border rounded-lg"
-                                >
-                                  <DropdownMenuItem
-                                    className="cursor-pointer"
-                                    onClick={() =>
-                                      handleStartRenamingFolder(
-                                        folder.folderId!,
-                                        folder.folderName,
-                                      )
-                                    }
-                                  >
-                                    <span className="text-sm">Rename</span>
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    className="cursor-pointer"
-                                    onClick={() =>
-                                      handleOpenDeleteFolderModal(
-                                        folder.folderId,
-                                        folder.folderName,
-                                      )
-                                    }
-                                  >
-                                    <span className="text-sm">Delete</span>
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenuPortal>
-                            </DropdownMenu>
-                            {state.openFolders[folder.folderId!] && (
-                              <SidebarMenuSub>
-                                {folder.canvases.length ? (
-                                  folder.canvases.map((canvas) =>
-                                    renderCanvasItem(
-                                      canvas,
-                                      folder.folderId!,
-                                      true,
-                                    ),
-                                  )
-                                ) : (
-                                  <SidebarMenuSubItem>
-                                    <SidebarMenuSubButton aria-disabled>
-                                      <Ghost className="h-4 w-4" />
-                                      <span className="italic pr-2">
-                                        Empty Folder
-                                      </span>
-                                    </SidebarMenuSubButton>
-                                  </SidebarMenuSubItem>
-                                )}
-                              </SidebarMenuSub>
-                            )}
-                          </>
-                        )}
-                      </SidebarMenuItem>
+                      <FolderRow key={`${folder.folderId}`} folder={folder} />
                     ))}
                   </SidebarMenu>
                 </SidebarGroupContent>
@@ -518,25 +616,31 @@ export function AppSidebar({
           )}
 
           {/* Canvases not in a folder (root) */}
-          {root && root.canvases.length > 0 ? (
-            <SidebarGroup>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {root.canvases.map((canvas) =>
-                    renderCanvasItem(canvas, "root", false),
-                  )}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          ) : (
-            <SidebarGroup>
-              <SidebarGroupContent className="mt-12 text-center italic">
-                {folders.length === 0
-                  ? "Create a canvas to get started"
-                  : "You do not have any root-level canvases"}
-              </SidebarGroupContent>
-            </SidebarGroup>
-          )}
+          <RootDropZone>
+            {root && root.canvases.length > 0 ? (
+              <SidebarGroup>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {root.canvases.map((canvas) => (
+                      <CanvasRow
+                        key={`${canvas._id}`}
+                        canvas={canvas}
+                        folderId="root"
+                      />
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            ) : (
+              <SidebarGroup>
+                <SidebarGroupContent className="mt-12 text-center italic">
+                  {folders.length === 0
+                    ? "Create a canvas to get started"
+                    : "You do not have any root-level canvases"}
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
+          </RootDropZone>
         </SidebarContent>
         <SidebarFooter user={currentUser} />
       </Sidebar>
@@ -556,7 +660,10 @@ export function AppSidebar({
             placeholder="Folder name"
             value={state.newFolderName}
             onChange={(e) =>
-              dispatch({ type: "SET_NEW_FOLDER_NAME", payload: e.target.value })
+              dispatch({
+                type: "SET_NEW_FOLDER_NAME",
+                payload: e.target.value,
+              })
             }
             onKeyDown={(e) => {
               if (e.key === "Enter" && state.newFolderName.trim()) {
@@ -658,6 +765,6 @@ export function AppSidebar({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+    </DnDProvider>
   )
 }

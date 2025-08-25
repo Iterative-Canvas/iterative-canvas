@@ -19,7 +19,7 @@ export default async function Layout({
   const token = await convexAuthNextjsToken()
   if (!token) redirect("/signin")
 
-  const { folderId, canvasId } = await params
+  const { canvasId } = await params
 
   const foldersWithCanvases = await preloadQuery(
     api.public.getFoldersWithCanvases,
@@ -36,7 +36,6 @@ export default async function Layout({
   return (
     <SidebarProvider>
       <AppSidebar
-        activeFolderId={folderId}
         activeCanvasId={canvasId}
         preloadedFoldersWithCanvases={foldersWithCanvases}
         preloadedCurrentUser={currentUser}
