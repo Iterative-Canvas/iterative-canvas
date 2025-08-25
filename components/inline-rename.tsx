@@ -61,3 +61,30 @@ export function InlineRename({
     </div>
   )
 }
+
+type RenameGuardProps = React.PropsWithChildren<{
+  className?: string
+}>
+
+/** Blocks parent click/drag handlers while renaming. */
+export function InlineRenameDndGuard({
+  children,
+  className,
+}: RenameGuardProps) {
+  const stopAll = (e: React.SyntheticEvent) => {
+    e.stopPropagation()
+  }
+
+  return (
+    <div
+      className={className}
+      draggable={false}
+      onDragStart={(e) => e.preventDefault()}
+      onPointerDownCapture={stopAll}
+      onClickCapture={stopAll}
+      onKeyDownCapture={stopAll}
+    >
+      {children}
+    </div>
+  )
+}
