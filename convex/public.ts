@@ -17,6 +17,7 @@ export const getCanvasById = query({
     const canvas = await ctx.db.get(args.id)
 
     if (!canvas) throw new Error(`Canvas ${args.id} not found`)
+    if (canvas.userId !== userId) throw new Error("Not authorized")
 
     return canvas
   },
@@ -260,6 +261,10 @@ export const getActiveVersionIdForCanvas = query({
   handler: async (ctx, { canvasId }) => {
     const userId = await getAuthUserId(ctx)
     if (!userId) throw new Error("Not authenticated")
+
+    const canvas = await ctx.db.get(canvasId)
+    if (!canvas) throw new Error(`Canvas ${canvasId} not found`)
+    if (canvas.userId !== userId) throw new Error("Not authorized")
 
     // Find the draft version for this canvas
     const draft = await ctx.db
