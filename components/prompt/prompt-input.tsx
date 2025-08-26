@@ -11,8 +11,20 @@ import {
   PromptInputButton,
   PromptInputSubmit,
 } from "@/components/ai-elements/prompt-input"
-import { PencilIcon, XIcon } from "lucide-react"
+import {
+  PencilIcon,
+  XIcon,
+  SettingsIcon,
+  FileIcon,
+  ImageIcon,
+} from "lucide-react"
 import { CardContent } from "@/components/ui/card"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu"
 
 type Props = {
   initialMarkdown?: string
@@ -71,7 +83,29 @@ export function PromptInput({ initialMarkdown, className }: Props) {
         </div>
 
         <PromptInputToolbar>
+          {/* Left: Gear dropdown (always visible) */}
           <PromptInputTools>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <PromptInputButton aria-label="Options">
+                  <SettingsIcon size={16} />
+                </PromptInputButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem>
+                  <FileIcon className="size-4" />
+                  Files
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <ImageIcon className="size-4" />
+                  Images
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </PromptInputTools>
+
+          {/* Right: Contextual actions */}
+          <div className="flex items-center gap-1">
             {!isEditing ? (
               <PromptInputButton
                 onClick={() => {
@@ -83,22 +117,21 @@ export function PromptInput({ initialMarkdown, className }: Props) {
                 <PencilIcon size={16} />
               </PromptInputButton>
             ) : (
-              <PromptInputButton
-                onClick={() => {
-                  setDraft(content)
-                  setIsEditing(false)
-                }}
-                disabled={isSubmitting}
-                aria-label="Cancel"
-              >
-                <XIcon size={16} />
-              </PromptInputButton>
+              <>
+                <PromptInputButton
+                  onClick={() => {
+                    setDraft(content)
+                    setIsEditing(false)
+                  }}
+                  disabled={isSubmitting}
+                  aria-label="Cancel"
+                >
+                  <XIcon size={16} />
+                </PromptInputButton>
+                <PromptInputSubmit disabled={isSubmitting} aria-label="Send" />
+              </>
             )}
-          </PromptInputTools>
-
-          {isEditing ? (
-            <PromptInputSubmit disabled={isSubmitting} aria-label="Send" />
-          ) : null}
+          </div>
         </PromptInputToolbar>
       </AIPromptInput>
     </CardContent>
