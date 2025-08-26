@@ -53,6 +53,7 @@ import { SplitButton } from "@/components/split-button"
 import { useDraggable } from "@/hooks/use-draggable"
 import { useDropZone } from "@/hooks/use-drop-zone"
 import { DndProvider } from "@/providers/DndProvider"
+import { cn } from "@/lib/utils"
 
 type CanvasLike = {
   _id: Id<"canvases">
@@ -166,7 +167,7 @@ export function CanvasRow({
               {canvas._id === activeCanvasId ? "" : "cursor-pointer"}
             ${isDragging ? "opacity-60" : ""}`}
           >
-            <FileText className="h-4 w-4" />
+            <FileText />
             <span>{canvas.name ?? "Untitled Canvas"}</span>
           </MenuButtonComponent>
           <DropdownMenu>
@@ -301,7 +302,7 @@ export function FolderRow({
             }
             aria-expanded={!!state.openFolders[folder.folderId]}
           >
-            <Folder className="h-4 w-4" />
+            <Folder />
             <span>{folder.folderName}</span>
           </SidebarMenuButton>
           <DropdownMenu>
@@ -362,7 +363,7 @@ export function FolderRow({
               ) : (
                 <SidebarMenuSubItem>
                   <SidebarMenuSubButton aria-disabled>
-                    <Ghost className="h-4 w-4" />
+                    <Ghost />
                     <span className="italic pr-2">Empty Folder</span>
                   </SidebarMenuSubButton>
                 </SidebarMenuSubItem>
@@ -379,10 +380,12 @@ export function RootDropZone({
   children,
   folders,
   activeCanvasId,
+  className,
 }: {
   children: ReactNode
   folders: Array<FolderWithCanvases & { folderId: Id<"folders"> }>
   activeCanvasId: Id<"canvases">
+  className?: string
 }) {
   const moveCanvas = useMoveCanvasToFolder(activeCanvasId)
 
@@ -401,7 +404,10 @@ export function RootDropZone({
   return (
     <div
       {...dropProps}
-      className={isOver ? "ring-2 ring-muted-foreground rounded-md" : undefined}
+      className={cn(
+        isOver ? "ring-2 ring-muted-foreground rounded-md" : undefined,
+        className,
+      )}
     >
       {children}
     </div>
@@ -524,17 +530,17 @@ export function AppSidebar({
   return (
     <DndProvider>
       <Sidebar {...props}>
-        <SidebarHeader className="">
-          <h1 className="p-2 text-lg font-semibold text-sidebar-foreground">
+        <SidebarHeader className="p-0">
+          <h1 className="flex h-16 shrink-0 items-center border-b px-4 text-lg font-semibold">
             Iterative Canvas
           </h1>
-          <SidebarMenu className="">
+          <SidebarMenu className="p-2">
             <SidebarMenuItem>
               <SidebarMenuButton
                 className="cursor-pointer"
                 onClick={handleCreateNewCanvas}
               >
-                <Plus className="h-4 w-4" />
+                <Plus />
                 <span>New Canvas</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -543,29 +549,26 @@ export function AppSidebar({
                 className="cursor-pointer"
                 onClick={() => dispatch({ type: "OPEN_NEW_FOLDER_MODAL" })}
               >
-                <FolderPlus className="h-4 w-4" />
+                <FolderPlus />
                 <span>New Folder</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton className="cursor-pointer" onClick={() => {}}>
-                <Search className="h-4 w-4" />
+                <Search />
                 <span>Search</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
-          <SidebarSeparator className="-ml-0.5" />
+          {/* IDK. It works. */}
+          <SidebarSeparator className="-ml-[0.01rem]" />
         </SidebarHeader>
 
         <SidebarContent className="overflow-x-hidden overflow-y-auto">
-          {/* <SidebarGroup>
-            <SidebarGroupContent></SidebarGroupContent>
-          </SidebarGroup> */}
-
           {/* Folders */}
           {folders.length > 0 && (
             <>
-              <SidebarGroup>
+              <SidebarGroup className="mt-2">
                 <SidebarGroupContent>
                   <SidebarMenu>
                     {folders.map((folder) => (
@@ -584,7 +587,11 @@ export function AppSidebar({
           )}
 
           {/* Canvases not in a folder (root) */}
-          <RootDropZone folders={folders} activeCanvasId={activeCanvasId}>
+          <RootDropZone
+            folders={folders}
+            activeCanvasId={activeCanvasId}
+            className={folders.length > 0 ? undefined : "mt-2"}
+          >
             {root && root.canvases.length > 0 ? (
               <SidebarGroup>
                 <SidebarGroupContent>
