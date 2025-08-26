@@ -49,7 +49,7 @@ export const AppHeader = ({
       <div className="flex items-center gap-1">
         {actionButtons.map((button, index) => (
           <Button key={index} variant="ghost" size="icon" className="h-8 w-8">
-            <button.icon className="h-4 w-4" />
+            <button.icon />
             <span className="sr-only">{button.label}</span>
           </Button>
         ))}
@@ -69,7 +69,7 @@ export const MockAppHeader = () => {
       <div className="flex items-center gap-1">
         {actionButtons.map((button, index) => (
           <Button key={index} variant="ghost" size="icon" className="h-8 w-8">
-            <button.icon className="h-4 w-4" />
+            <button.icon />
             <span className="sr-only">{button.label}</span>
           </Button>
         ))}
