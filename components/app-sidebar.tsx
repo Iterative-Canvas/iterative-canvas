@@ -524,50 +524,43 @@ export function AppSidebar({
   return (
     <DndProvider>
       <Sidebar {...props}>
-        <SidebarHeader>
-          <div className="px-2 py-2">
-            <h1 className="text-lg font-semibold text-sidebar-foreground">
-              Iterative Canvas
-            </h1>
-          </div>
+        <SidebarHeader className="">
+          <h1 className="p-2 text-lg font-semibold text-sidebar-foreground">
+            Iterative Canvas
+          </h1>
+          <SidebarMenu className="">
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                className="cursor-pointer"
+                onClick={handleCreateNewCanvas}
+              >
+                <Plus className="h-4 w-4" />
+                <span>New Canvas</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                className="cursor-pointer"
+                onClick={() => dispatch({ type: "OPEN_NEW_FOLDER_MODAL" })}
+              >
+                <FolderPlus className="h-4 w-4" />
+                <span>New Folder</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton className="cursor-pointer" onClick={() => {}}>
+                <Search className="h-4 w-4" />
+                <span>Search</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+          <SidebarSeparator className="-ml-0.5" />
         </SidebarHeader>
 
         <SidebarContent className="overflow-x-hidden overflow-y-auto">
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    className="cursor-pointer"
-                    onClick={handleCreateNewCanvas}
-                  >
-                    <Plus className="h-4 w-4" />
-                    <span>New Canvas</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    className="cursor-pointer"
-                    onClick={() => dispatch({ type: "OPEN_NEW_FOLDER_MODAL" })}
-                  >
-                    <FolderPlus className="h-4 w-4" />
-                    <span>New Folder</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    className="cursor-pointer"
-                    onClick={() => {}}
-                  >
-                    <Search className="h-4 w-4" />
-                    <span>Search</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-
-          <SidebarSeparator />
+          {/* <SidebarGroup>
+            <SidebarGroupContent></SidebarGroupContent>
+          </SidebarGroup> */}
 
           {/* Folders */}
           {folders.length > 0 && (
