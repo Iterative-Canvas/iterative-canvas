@@ -88,7 +88,7 @@ export function CanvasContent({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <PromptInputButton aria-label="Refine Response">
-                  <RefreshCw className="size-4" />
+                  <RefreshCw size={16} />
                   Refine Response
                 </PromptInputButton>
               </DropdownMenuTrigger>
@@ -121,7 +121,7 @@ export function CanvasContent({
                 }}
                 aria-label="Edit"
               >
-                <PencilIcon className="size-4" />
+                <PencilIcon size={16} />
               </PromptInputButton>
             ) : (
               <>
@@ -133,10 +133,10 @@ export function CanvasContent({
                   disabled={isSubmitting}
                   aria-label="Cancel"
                 >
-                  <XIcon className="size-4" />
+                  <XIcon size={16} />
                 </PromptInputButton>
                 <PromptInputSubmit disabled={isSubmitting} aria-label="Save">
-                  <CheckIcon className="size-4" />
+                  <CheckIcon size={16} />
                 </PromptInputSubmit>
               </>
             )}

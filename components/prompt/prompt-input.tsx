@@ -93,11 +93,11 @@ export function PromptInput({ initialMarkdown, className }: Props) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
                 <DropdownMenuItem>
-                  <FileIcon className="size-4" />
+                  <FileIcon size={16} />
                   Files
                 </DropdownMenuItem>
                 <DropdownMenuItem>
-                  <ImageIcon className="size-4" />
+                  <ImageIcon size={16} />
                   Images
                 </DropdownMenuItem>
               </DropdownMenuContent>
