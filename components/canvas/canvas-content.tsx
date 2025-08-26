@@ -4,7 +4,7 @@ import { useCallback, useState } from "react"
 import { cn } from "@/lib/utils"
 import { Response } from "@/components/ai-elements/response"
 import {
-  PromptInput as Container,
+  PromptInput as AIPromptInput,
   PromptInputTextarea,
   PromptInputToolbar,
   PromptInputTools,
@@ -60,7 +60,7 @@ export function CanvasContent({
 
   return (
     <CardContent className="flex-1 min-h-0">
-      <Container
+      <AIPromptInput
         onSubmit={handleSubmit}
         className={cn(
           "size-full min-w-[26rem] min-h-[15rem] flex flex-col",
@@ -142,7 +142,7 @@ export function CanvasContent({
             )}
           </div>
         </PromptInputToolbar>
-      </Container>
+      </AIPromptInput>
     </CardContent>
   )
 }
