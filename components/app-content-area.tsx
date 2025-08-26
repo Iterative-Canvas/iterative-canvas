@@ -9,20 +9,19 @@ import { CanvasSection } from "@/components/canvas/canvas-section"
 export function AppContentArea() {
   return (
     <ResizablePanelGroup direction="horizontal">
-      <ResizablePanel defaultSize={50} className="scrollbar-hidden">
+      <ResizablePanel defaultSize={50}>
         <ResizablePanelGroup direction="vertical">
-          <ResizablePanel defaultSize={50} className="p-4 !overflow-hidden">
+          <ResizablePanel defaultSize={50} className="p-4">
             <PromptSection />
           </ResizablePanel>
           <ResizableHandle withHandle className="bg-primary/25" />
-          <ResizablePanel defaultSize={50} className="p-4 !overflow-hidden">
-            {/* Requirements Section */}
-            <div className="h-full"></div>
+          <ResizablePanel defaultSize={50} className="p-4">
+            Evals
           </ResizablePanel>
         </ResizablePanelGroup>
       </ResizablePanel>
       <ResizableHandle withHandle className="bg-primary/25" />
-      <ResizablePanel defaultSize={50} className="p-4 !overflow-hidden">
+      <ResizablePanel defaultSize={50} className="p-4">
         <CanvasSection />
       </ResizablePanel>
     </ResizablePanelGroup>

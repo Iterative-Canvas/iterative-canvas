@@ -34,7 +34,7 @@ export default async function Layout({
   )
 
   return (
-    <SidebarProvider>
+    <SidebarProvider className="h-[100dvh] max-h-[100dvh] overflow-auto">
       <AppSidebar
         activeCanvasId={canvasId}
         preloadedFoldersWithCanvases={foldersWithCanvases}
