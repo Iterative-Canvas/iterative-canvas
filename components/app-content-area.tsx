@@ -4,6 +4,7 @@ import {
   ResizableHandle,
 } from "@/components/ui/resizable"
 import { PromptSection } from "@/components/prompt/prompt-section"
+import { CanvasSection } from "@/components/canvas/canvas-section"
 
 export function AppContentArea() {
   return (
@@ -28,8 +29,7 @@ export function AppContentArea() {
         defaultSize={50}
         className="p-4 !overflow-y-auto scrollbar-hidden"
       >
-        {/* Right Half - Canvas */}
-        <div className="h-full min-w-64"></div>
+        <CanvasSection />
       </ResizablePanel>
     </ResizablePanelGroup>
   )
