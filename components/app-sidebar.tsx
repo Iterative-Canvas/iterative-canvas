@@ -49,7 +49,6 @@ import {
   DropdownMenuPortal,
 } from "@radix-ui/react-dropdown-menu"
 import { InlineRename } from "@/components/inline-rename"
-import { SplitButton } from "@/components/split-button"
 import { useDraggable } from "@/hooks/use-draggable"
 import { useDropZone } from "@/hooks/use-drop-zone"
 import { DndProvider } from "@/providers/DndProvider"
