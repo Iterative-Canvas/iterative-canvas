@@ -54,6 +54,7 @@ import { useDraggable } from "@/hooks/use-draggable"
 import { useDropZone } from "@/hooks/use-drop-zone"
 import { DndProvider } from "@/providers/DndProvider"
 import { cn } from "@/lib/utils"
+import { ConfirmModal } from "./confirm-modal"
 
 type CanvasLike = {
   _id: Id<"canvases">
@@ -665,82 +666,53 @@ export function AppSidebar({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <Dialog
+      <ConfirmModal
         open={state.showDeleteCanvasModal}
         onOpenChange={() => dispatch({ type: "TOGGLE_DELETE_CANVAS_MODAL" })}
-      >
-        <DialogContent aria-describedby={undefined}>
-          <DialogHeader>
-            <DialogTitle>Delete Canvas</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
+        title="Delete Canvas"
+        variant="destructive"
+        description={
+          <>
             Are you sure you want to delete{" "}
             <span className="font-bold">{state.canvasNameToDelete}</span>? This
-            action cannot be undone. All versions, evaluations, and related data
-            will be permanently deleted.
-          </p>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={handleCloseDeleteCanvasModal}
-              className="cursor-pointer"
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleConfirmDeleteCanvas}
-              className="cursor-pointer"
-              disabled={state.canvasDeleteInProgress}
-            >
-              {state.canvasDeleteInProgress ? "Deleting..." : "Delete"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <Dialog
+            action cannot be undone. All versions, evals, and related data will
+            be permanently deleted.
+          </>
+        }
+        onConfirm={handleConfirmDeleteCanvas}
+        onCancel={handleCloseDeleteCanvasModal}
+      />
+      <ConfirmModal
         open={state.showDeleteFolderModal}
         onOpenChange={() => dispatch({ type: "TOGGLE_DELETE_FOLDER_MODAL" })}
-      >
-        <DialogContent aria-describedby={undefined}>
-          <DialogHeader>
-            <DialogTitle>Delete Folder</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            Are you sure you want to delete{" "}
-            <span className="font-bold">{state.folderNameToDelete}</span>?
-          </p>
-          <DialogFooter className="flex flex-col gap-2 sm:flex-row">
-            <Button
-              variant="outline"
-              onClick={handleCloseDeleteFolderModal}
-              className="cursor-pointer"
-            >
-              Cancel
-            </Button>
-            <SplitButton
-              disabled={state.folderDeleteInProgress}
-              variant="destructive"
-              moreLabel="More delete options"
-              items={[
-                {
-                  label: state.folderDeleteInProgress
-                    ? "Deleting..."
-                    : "Delete Folder",
-                  onClick: () => handleConfirmDeleteFolder(false),
-                },
-                {
-                  label: state.folderDeleteInProgress
-                    ? "Deleting..."
-                    : "Delete Folder + Canvases",
-                  onClick: () => handleConfirmDeleteFolder(true),
-                  destructive: true,
-                },
-              ]}
-            />
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        title="Delete Folder"
+        variant="destructive"
+        description={
+          <>
+            Are you sure you want to delete folder{" "}
+            <span className="font-bold">{state.folderNameToDelete}</span>? This
+            action cannot be undone.
+          </>
+        }
+        onConfirm={() => handleConfirmDeleteFolder(false)}
+        onCancel={handleCloseDeleteFolderModal}
+        splitActions={[
+          {
+            label: state.folderDeleteInProgress
+              ? "Deleting..."
+              : "Delete Folder",
+            onClick: () => handleConfirmDeleteFolder(false),
+            destructive: true,
+          },
+          {
+            label: state.folderDeleteInProgress
+              ? "Deleting..."
+              : "Delete Folder + Canvases",
+            onClick: () => handleConfirmDeleteFolder(true),
+            destructive: true,
+          },
+        ]}
+      />
     </DndProvider>
   )
 }
