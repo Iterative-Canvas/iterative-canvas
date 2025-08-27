@@ -14,11 +14,13 @@ export default async function Page({
 
   const { folderId, canvasId } = await params
 
-  const { versionId } = await fetchQuery(
-    api.public.getActiveVersionIdForCanvas,
+  const { draftVersionId } = await fetchQuery(
+    api.public.getActiveDraftVersionIdForCanvas,
     { canvasId },
     { token },
   )
 
-  redirect(`/app/folder/${folderId}/canvas/${canvasId}/version/${versionId}`)
+  redirect(
+    `/app/folder/${folderId}/canvas/${canvasId}/version/${draftVersionId}`,
+  )
 }

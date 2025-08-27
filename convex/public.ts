@@ -7,6 +7,7 @@ import {
   deleteCanvasDeep,
 } from "./helpers"
 import { v } from "convex/values"
+import { version } from "os"
 
 export const getCanvasById = query({
   args: { id: v.id("canvases") },
@@ -256,7 +257,7 @@ export const getCurrentUser = query({
   },
 })
 
-export const getActiveVersionIdForCanvas = query({
+export const getActiveDraftVersionIdForCanvas = query({
   args: { canvasId: v.id("canvases") },
   handler: async (ctx, { canvasId }) => {
     const userId = await getAuthUserId(ctx)
@@ -278,7 +279,7 @@ export const getActiveVersionIdForCanvas = query({
     if (!draft.parentVersionId)
       throw new Error("Draft is not linked to a parent canvas version")
 
-    return { versionId: draft.parentVersionId }
+    return { draftVersionId: draft._id }
   },
 })
 
