@@ -1,5 +1,3 @@
-'use client"'
-
 import { Button } from "@/components/ui/button"
 import { CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
@@ -26,7 +24,7 @@ export function CanvasHeader({ className }: CanvasHeaderProps) {
           onClick={() => {}}
           aria-label="Copy"
         >
-          <Copy className="h-4 w-4" />
+          <Copy />
         </Button>
         <Button
           variant="ghost"
@@ -35,7 +33,7 @@ export function CanvasHeader({ className }: CanvasHeaderProps) {
           onClick={() => {}}
           aria-label="Maximize"
         >
-          <Maximize2 className="h-4 w-4" />
+          <Maximize2 />
         </Button>
       </div>
     </CardHeader>

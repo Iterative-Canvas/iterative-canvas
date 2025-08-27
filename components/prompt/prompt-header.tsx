@@ -36,13 +36,13 @@ export function PromptHeader() {
       <div className="flex items-center gap-1">
         <ModelSelector buttonClassName="h-8" />
         <Button variant="ghost" size="icon" className="h-8 w-8">
-          <Sparkles className="h-4 w-4" />
+          <Sparkles />
         </Button>
         <Button variant="ghost" size="icon" className="h-8 w-8">
-          <Copy className="h-4 w-4" />
+          <Copy />
         </Button>
         <Button variant="ghost" size="icon" className="h-8 w-8">
-          <Maximize2 className="h-4 w-4" />
+          <Maximize2 />
         </Button>
       </div>
     </CardHeader>
