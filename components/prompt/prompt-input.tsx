@@ -73,7 +73,6 @@ export function PromptInput({ initialMarkdown, className }: Props) {
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               className="h-full min-h-full bg-transparent p-4"
-              placeholder="Write your message in plain text..."
             />
           ) : (
             <div className="p-4">
