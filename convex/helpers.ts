@@ -24,6 +24,7 @@ export async function scaffoldNewCanvas(
     canvasId,
     parentVersionId: versionId,
     isDraft: true,
+    hasBeenEdited: false,
   })
 
   return { canvasId, versionId }

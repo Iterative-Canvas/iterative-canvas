@@ -34,6 +34,10 @@ const schema = defineSchema({
     // A `name` field might be more useful in a branching model.
     versionNo: v.optional(v.number()),
     isDraft: v.boolean(),
+    // This field is only applicable to draft versions
+    // This allows us to track whether the draft has been
+    // edited since it was created from the parent version.
+    hasBeenEdited: v.optional(v.boolean()),
     promptModel: v.optional(v.string()),
     prompt: v.optional(v.string()),
     response: v.optional(v.string()),
