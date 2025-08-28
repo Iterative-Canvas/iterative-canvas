@@ -7,7 +7,6 @@ import {
   deleteCanvasDeep,
 } from "./helpers"
 import { v } from "convex/values"
-import { version } from "os"
 
 export const getCanvasById = query({
   args: { id: v.id("canvases") },
