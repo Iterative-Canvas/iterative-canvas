@@ -100,8 +100,8 @@ export const getDefaultAppUrlPathParams = mutation({
         throw new Error("Draft is not linked to a parent canvas version")
       }
 
-      // 3. Get the parent version of the draft
-      versionId = draft.parentVersionId
+      // 3. Set the versionId to the current draft
+      versionId = draft._id
     } else {
       // 4. Scaffold a new canvas, canvas version, and draft version
       ;({ canvasId, versionId } = await scaffoldNewCanvas(ctx, userId))
@@ -299,5 +299,21 @@ export const moveCanvasToFolder = mutation({
     }
 
     await ctx.db.patch(canvasId, { folderId })
+  },
+})
+
+export const getAvailableModels = query({
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+
+    const availableModels = await ctx.db
+      .query("aiGatewayModels")
+      .withIndex("isDeprecated_provider_name", (q) =>
+        q.eq("isDeprecated", false),
+      )
+      .collect()
+
+    return availableModels
   },
 })

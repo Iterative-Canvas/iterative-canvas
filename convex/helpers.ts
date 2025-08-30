@@ -1,6 +1,20 @@
 import { MutationCtx, QueryCtx } from "./_generated/server"
 import { Id } from "./_generated/dataModel"
 
+export async function getAppDefaultModelDbIds(ctx: QueryCtx) {
+  const models = await ctx.db.query("aiGatewayModels").collect()
+
+  const promptModel = models.find((m) => m.modelId === "openai/gpt-5")
+  const refineModel = models.find((m) => m.modelId === "openai/gpt-5")
+  const evalsModel = models.find((m) => m.modelId === "openai/gpt-4o")
+
+  return {
+    promptModelId: promptModel?._id,
+    refineModelId: refineModel?._id,
+    evalsModelId: evalsModel?._id,
+  }
+}
+
 export async function scaffoldNewCanvas(
   ctx: MutationCtx,
   userId: Id<"users">,
@@ -8,6 +22,30 @@ export async function scaffoldNewCanvas(
   const updateId = await ctx.db.insert("entityUpdates", {
     updatedTime: Date.now(),
   })
+
+  // Get the user's preferred default models, if any
+  const userPreferences = await ctx.db
+    .query("userPreferences")
+    .withIndex("userId", (q) => q.eq("userId", userId))
+    .unique()
+
+  // get the app-wide default models in case user has not set any preferences
+  const fallbackModels = await getAppDefaultModelDbIds(ctx)
+
+  const canvasModelsToInitialize = {
+    promptModelId:
+      userPreferences?.defaultPromptModelId || fallbackModels.promptModelId,
+    refineModelId:
+      userPreferences?.defaultRefineModelId || fallbackModels.refineModelId,
+  }
+  const evalsModelToInitialize =
+    userPreferences?.defaultEvalsModelId || fallbackModels.evalsModelId
+  const evalToInitialize = {
+    modelId: evalsModelToInitialize,
+    isRequired: true,
+    weight: 1,
+    type: "pass_fail" as const,
+  }
 
   const canvasId = await ctx.db.insert("canvases", {
     userId,
@@ -18,16 +56,28 @@ export async function scaffoldNewCanvas(
     canvasId,
     versionNo: 1,
     isDraft: false,
+    ...canvasModelsToInitialize,
   })
 
-  await ctx.db.insert("canvasVersions", {
+  await ctx.db.insert("evals", {
+    canvasVersionId: versionId,
+    ...evalToInitialize,
+  })
+
+  const draftVersionId = await ctx.db.insert("canvasVersions", {
     canvasId,
     parentVersionId: versionId,
     isDraft: true,
     hasBeenEdited: false,
+    ...canvasModelsToInitialize,
   })
 
-  return { canvasId, versionId }
+  await ctx.db.insert("evals", {
+    canvasVersionId: draftVersionId,
+    ...evalToInitialize,
+  })
+
+  return { canvasId, versionId: draftVersionId }
 }
 
 export async function getCanvasesByFolderIdWithUpdatedTime(

@@ -43,8 +43,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-
-// Types and initial data
+import ModelCombobox from "../ai-elements/model-combobox"
+import { Id } from "@/convex/_generated/dataModel"
 
 type Requirement = {
   id: number
@@ -425,8 +425,8 @@ export function EvalsContent() {
 
   return (
     <CardContent className="flex flex-1 flex-col gap-3 overflow-auto">
-      <Card className="flex flex-1 flex-col pl-8 pr-4 rounded-md shadow-xs overflow-auto scrollbar-hidden">
-        <div className="flex-1 space-y-8 min-h-[120px]">
+      <Card className="flex flex-1 flex-col pl-8 pr-4 rounded-md shadow-xs overflow-auto">
+        <div className="flex-1 space-y-10 min-h-[120px]">
           {requirements.map((req) => (
             <div key={req.id} className="flex flex-col gap-2 -ml-6">
               <div className="flex">
@@ -443,7 +443,7 @@ export function EvalsContent() {
                     <Textarea
                       placeholder="Enter requirement..."
                       className={cn(
-                        "text-sm pr-8 resize-none scrollbar-hidden",
+                        "text-sm pr-8 resize-none scrollbars-hidden",
                         req.fitToContent
                           ? "field-sizing-content overflow-hidden"
                           : "field-sizing-fixed h-9 overflow-auto",
@@ -553,6 +553,26 @@ export function EvalsContent() {
                             handleRequirementChange(req.id, "model", model)
                           }
                           buttonClassName="h-6"
+                        />
+                        <ModelCombobox
+                          defaultValue={{
+                            _id: "asdfasdf" as Id<"aiGatewayModels">,
+                            modelId: "goofy/goober-1",
+                            name: "Goober 1",
+                            description: "A silly model for silly tasks",
+                            provider: "GoofyAI",
+                            input: 2048,
+                            output: 2048,
+                            isDeprecated: true,
+                            _creationTime: Date.now(),
+                          }}
+                          onChange={(model) =>
+                            console.log({ onChangeModel: model })
+                          }
+                          onValidityChange={(valid) =>
+                            console.log({ comboboxValidity: valid })
+                          }
+                          className="h-6"
                         />
                         <Button
                           variant="ghost"
