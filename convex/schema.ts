@@ -52,7 +52,7 @@ const schema = defineSchema({
     promptModelId: v.optional(v.id("aiGatewayModels")),
     prompt: v.optional(v.string()),
     response: v.optional(v.string()),
-    refineResponseModelId: v.optional(v.id("aiGatewayModels")),
+    refineModelId: v.optional(v.id("aiGatewayModels")),
     successThreshold: v.optional(v.number()),
   })
     // If we move to a branching model, then we'll probably want a parentVersionId index
