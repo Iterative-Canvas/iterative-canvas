@@ -30,6 +30,8 @@ const schema = defineSchema({
   // the schema this way, rather than including updatedTime as a field directly on the
   // canvases table, we can avoid problems associated with "over-reactivity", in which
   // canvas queries that don't care about updatedTime are constantly re-running.
+  // NOTE: For right now, this table design isn't super generic and just works for canvases.
+  // Can refactor later if we want to track updatedTime for other entities.
   entityUpdates: defineTable({
     canvasId: v.id("canvases"),
     updatedTime: v.number(),
