@@ -19,10 +19,6 @@ export async function scaffoldNewCanvas(
   ctx: MutationCtx,
   userId: Id<"users">,
 ): Promise<{ canvasId: Id<"canvases">; versionId: Id<"canvasVersions"> }> {
-  const updateId = await ctx.db.insert("entityUpdates", {
-    updatedTime: Date.now(),
-  })
-
   // Get the user's preferred default models, if any
   const userPreferences = await ctx.db
     .query("userPreferences")
@@ -49,7 +45,11 @@ export async function scaffoldNewCanvas(
 
   const canvasId = await ctx.db.insert("canvases", {
     userId,
-    entityUpdate: updateId,
+  })
+
+  await ctx.db.insert("entityUpdates", {
+    canvasId,
+    updatedTime: Date.now(),
   })
 
   const versionId = await ctx.db.insert("canvasVersions", {
@@ -97,10 +97,11 @@ export async function getCanvasesByFolderIdWithUpdatedTime(
 
   const canvasesWithUpdatedTime = await Promise.all(
     canvases.map(async (canvas) => {
-      let entityUpdate = null
-      if (canvas.entityUpdate) {
-        entityUpdate = await ctx.db.get(canvas.entityUpdate)
-      } else {
+      const entityUpdate = await ctx.db
+        .query("entityUpdates")
+        .withIndex("canvasId", (q) => q.eq("canvasId", canvas._id))
+        .unique()
+      if (!entityUpdate) {
         console.warn(
           `Canvas ${canvas._id} is missing a corresponding entityUpdates.updatedTime`,
         )
@@ -155,8 +156,12 @@ export async function deleteCanvasDeep(
   }
 
   // 4. Delete the entity update record
-  if (canvas.entityUpdate) {
-    await ctx.db.delete(canvas.entityUpdate)
+  const entityUpdate = await ctx.db
+    .query("entityUpdates")
+    .withIndex("canvasId", (q) => q.eq("canvasId", canvasId))
+    .unique()
+  if (entityUpdate) {
+    await ctx.db.delete(entityUpdate._id)
   }
 
   // 5. Delete the canvas itself

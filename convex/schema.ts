@@ -23,20 +23,17 @@ const schema = defineSchema({
     userId: v.id("users"),
     folderId: v.optional(v.id("folders")),
     name: v.optional(v.string()),
-    // Update this any time a canvas or any of it's child entities are modified
-    entityUpdate: v.id("entityUpdates"),
   }).index("userId_folderId", ["userId", "folderId"]),
 
-  // TODO: Reverse this relationship and have entityUpdates point to canvases. The child should hold the foreign key.
-  // ----------------------------------------------------------------------------------------------------------------
   // Allows us to track an updated time for "domain entities", such as a canvas, when
   // considered as a logical unit with all of it's children and relations. By structuring
   // the schema this way, rather than including updatedTime as a field directly on the
   // canvases table, we can avoid problems associated with "over-reactivity", in which
   // canvas queries that don't care about updatedTime are constantly re-running.
   entityUpdates: defineTable({
+    canvasId: v.id("canvases"),
     updatedTime: v.number(),
-  }),
+  }).index("canvasId", ["canvasId"]),
 
   canvasVersions: defineTable({
     canvasId: v.id("canvases"),

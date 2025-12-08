@@ -184,9 +184,15 @@ export const renameCanvas = mutation({
     // top of the list in the sidebar as soon as it is renamed, which is a
     // bit jarring. For right now though, keep it b/c it's useful for testing
     // and debugging and making sure the UI is responsive to changes.
-    await ctx.db.patch(canvas.entityUpdate, {
-      updatedTime: Date.now(),
-    })
+    const entityUpdate = await ctx.db
+      .query("entityUpdates")
+      .withIndex("canvasId", (q) => q.eq("canvasId", canvasId))
+      .unique()
+    if (entityUpdate) {
+      await ctx.db.patch(entityUpdate._id, {
+        updatedTime: Date.now(),
+      })
+    }
   },
 })
 
