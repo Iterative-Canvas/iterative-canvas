@@ -103,7 +103,7 @@ export function ModelCombobox({
       new Set(["openai/gpt-5", "openai/gpt-5-pro", "openai/o1", "openai/o3"]),
     [],
   )
-  console.log({ selected })
+
   const showBattery = !!(selected && reasoningModelIds.has(selected.modelId))
   const batteryIcons = {
     medium: BatteryMedium,
