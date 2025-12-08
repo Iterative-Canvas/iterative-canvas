@@ -1,13 +1,23 @@
 import { Button } from "@/components/ui/button"
 import { CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
-import { Copy, Maximize2 } from "lucide-react"
+import { Copy, Maximize2, Minimize2 } from "lucide-react"
 
 export type CanvasHeaderProps = {
   className?: string
+  onMaximize?: () => void
+  onRestore?: () => void
+  isMaximized?: boolean
 }
 
-export function CanvasHeader({ className }: CanvasHeaderProps) {
+export function CanvasHeader({
+  className,
+  onMaximize,
+  onRestore,
+  isMaximized = false,
+}: CanvasHeaderProps) {
+  const handleToggle = isMaximized ? onRestore : onMaximize
+
   return (
     <CardHeader
       className={cn(
@@ -30,10 +40,13 @@ export function CanvasHeader({ className }: CanvasHeaderProps) {
           variant="ghost"
           size="icon"
           className="h-8 w-8"
-          onClick={() => {}}
-          aria-label="Maximize"
+          onClick={handleToggle}
+          disabled={!handleToggle}
+          aria-label={
+            isMaximized ? "Restore canvas panel" : "Maximize canvas panel"
+          }
         >
-          <Maximize2 />
+          {isMaximized ? <Minimize2 /> : <Maximize2 />}
         </Button>
       </div>
     </CardHeader>
