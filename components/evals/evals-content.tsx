@@ -23,21 +23,11 @@ import {
   Play,
   Loader2,
   PlayCircle,
-  ChevronDown,
-  BatteryMedium,
-  BatteryFull,
-  BatteryLow,
   CircleDashed,
   CircleCheck,
   TriangleAlert,
   Plus,
 } from "lucide-react"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import {
   Popover,
   PopoverContent,
@@ -148,91 +138,7 @@ const initialRequirements: Requirement[] = [
   },
 ]
 
-const models = [
-  "gpt-4o",
-  "chatgpt-4o-latest",
-  "gpt-4o-mini",
-  "gpt-4.1",
-  "gpt-4.1-mini",
-  "gpt-4.1-nano",
-  "o3",
-  "o3-pro",
-  "o3-mini",
-  "o1",
-  "o1-pro",
-  "o4-mini",
-]
-
 // UI helpers migrated from concept page
-
-interface ModelSelectorProps {
-  models: string[]
-  selectedModel: string
-  onModelChange: (model: string) => void
-  buttonClassName?: string
-}
-
-const ModelSelector = ({
-  models,
-  selectedModel,
-  onModelChange,
-  buttonClassName,
-}: ModelSelectorProps) => {
-  const [batteryState, setBatteryState] = useState<"medium" | "full" | "low">(
-    "medium",
-  )
-
-  const batteryModels = ["o3", "o3-pro", "o3-mini", "o1", "o1-pro", "o4-mini"]
-  const showBatteryButton = batteryModels.includes(selectedModel)
-
-  const handleBatteryClick = () => {
-    setBatteryState((currentState) => {
-      if (currentState === "medium") return "full"
-      if (currentState === "full") return "low"
-      return "medium"
-    })
-  }
-
-  const batteryIcons = {
-    medium: BatteryMedium,
-    full: BatteryFull,
-    low: BatteryLow,
-  }
-  const BatteryIcon = batteryIcons[batteryState]
-
-  return (
-    <div className="flex items-center gap-1">
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            className={cn("px-2 text-xs", buttonClassName)}
-          >
-            {selectedModel}
-            <ChevronDown className="h-3 w-3 ml-1" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          {models.map((model) => (
-            <DropdownMenuItem key={model} onSelect={() => onModelChange(model)}>
-              {model}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-      {showBatteryButton && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6"
-          onClick={handleBatteryClick}
-        >
-          <BatteryIcon className="h-4 w-4" />
-        </Button>
-      )}
-    </div>
-  )
-}
 
 interface ResultIndicatorProps {
   result: "pass" | "fail" | null
@@ -546,14 +452,6 @@ export function EvalsContent() {
                         </div>
                       )}
                       <div className="ml-auto flex items-center gap-1">
-                        <ModelSelector
-                          models={models}
-                          selectedModel={req.model}
-                          onModelChange={(model) =>
-                            handleRequirementChange(req.id, "model", model)
-                          }
-                          buttonClassName="h-6"
-                        />
                         <ModelCombobox
                           defaultValue={{
                             _id: "asdfasdf" as Id<"aiGatewayModels">,

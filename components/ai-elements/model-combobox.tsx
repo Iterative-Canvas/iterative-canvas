@@ -2,7 +2,14 @@
 
 import * as React from "react"
 import { useMemo } from "react"
-import { Check, AlertTriangle, ChevronDown } from "lucide-react"
+import {
+  Check,
+  AlertTriangle,
+  ChevronDown,
+  BatteryMedium,
+  BatteryFull,
+  BatteryLow,
+} from "lucide-react"
 import { useQuery } from "convex/react"
 
 import { cn } from "@/lib/utils"
@@ -42,6 +49,9 @@ export function ModelCombobox({
   const [selected, setSelected] = React.useState<
     Doc<"aiGatewayModels"> | undefined
   >(defaultValue)
+  const [batteryState, setBatteryState] = React.useState<
+    "medium" | "full" | "low"
+  >("medium")
 
   // Load available models from Convex
   const availableModels = useQuery(api.public.getAvailableModels)
@@ -87,6 +97,29 @@ export function ModelCombobox({
   // Compute validity: valid only if a model is selected AND it exists in available models
   const isValid = !!(selected && availableById.has(selected._id))
 
+  // Reasoning models get a battery icon toggle, similar to the ModelSelector component
+  const reasoningModelIds = React.useMemo(
+    () =>
+      new Set(["openai/gpt-5", "openai/gpt-5-pro", "openai/o1", "openai/o3"]),
+    [],
+  )
+  console.log({ selected })
+  const showBattery = !!(selected && reasoningModelIds.has(selected.modelId))
+  const batteryIcons = {
+    medium: BatteryMedium,
+    full: BatteryFull,
+    low: BatteryLow,
+  }
+  const BatteryIcon = batteryIcons[batteryState]
+
+  const handleBatteryClick = () => {
+    setBatteryState((current) => {
+      if (current === "medium") return "full"
+      if (current === "full") return "low"
+      return "medium"
+    })
+  }
+
   // Fire callbacks on initial render and when dependencies change
   React.useEffect(() => {
     onChange?.(selected)
@@ -111,76 +144,90 @@ export function ModelCombobox({
   const showWarning = !!(selected && !availableById.has(selected._id))
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
+    <div className="flex items-center gap-1">
+      {showBattery && (
         <Button
           type="button"
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className={cn("max-w-48 flex items-center text-xs", className)}
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={handleBatteryClick}
+          aria-label={`Battery ${batteryState}`}
         >
-          {showWarning && (
-            <AlertTriangle
-              className="size-4 text-amber-500"
-              aria-label="Unavailable model"
-            />
-          )}
-          <span className="truncate" title={displayLabel}>
-            {displayLabel}
-          </span>
-          <ChevronDown className="h-3 w-3 ml-1" />
+          <BatteryIcon className="h-4 w-4" />
         </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[420px] p-0">
-        <Command
-          filter={(value, search) => {
-            const [modelId] = value.split("||")
-            const q = search.trim().toLowerCase()
-            return modelId.toLowerCase().includes(q) ? 1 : 0
-          }}
-        >
-          <CommandInput placeholder="Search model..." className="h-9" />
-          <CommandList>
-            <CommandEmpty>No models found.</CommandEmpty>
-            {groups.map(({ provider, models }) => (
-              <CommandGroup key={provider} heading={provider}>
-                {models.map((m) => {
-                  const isSelected = selected?._id === m._id
-                  const isUnavailable = !availableById.has(m._id)
-                  return (
-                    <CommandItem
-                      key={m._id}
-                      value={`${m.modelId}||${m._id}`}
-                      keywords={[m.modelId]}
-                      onSelect={handleSelect}
-                    >
-                      <span className="flex items-center gap-2 truncate">
-                        {isUnavailable && (
-                          <AlertTriangle
-                            className="size-4 text-amber-500"
-                            aria-label="Unavailable model"
-                          />
-                        )}
-                        <span className="truncate" title={m.modelId}>
-                          {m.modelId}
+      )}
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className={cn("max-w-48 flex items-center text-xs", className)}
+          >
+            {showWarning && (
+              <AlertTriangle
+                className="size-4 text-amber-500"
+                aria-label="Unavailable model"
+              />
+            )}
+            <span className="truncate" title={displayLabel}>
+              {displayLabel}
+            </span>
+            <ChevronDown className="h-3 w-3 ml-1" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[420px] p-0">
+          <Command
+            filter={(value, search) => {
+              const [modelId] = value.split("||")
+              const q = search.trim().toLowerCase()
+              return modelId.toLowerCase().includes(q) ? 1 : 0
+            }}
+          >
+            <CommandInput placeholder="Search model..." className="h-9" />
+            <CommandList>
+              <CommandEmpty>No models found.</CommandEmpty>
+              {groups.map(({ provider, models }) => (
+                <CommandGroup key={provider} heading={provider}>
+                  {models.map((m) => {
+                    const isSelected = selected?._id === m._id
+                    const isUnavailable = !availableById.has(m._id)
+                    return (
+                      <CommandItem
+                        key={m._id}
+                        value={`${m.modelId}||${m._id}`}
+                        keywords={[m.modelId]}
+                        onSelect={handleSelect}
+                      >
+                        <span className="flex items-center gap-2 truncate">
+                          {isUnavailable && (
+                            <AlertTriangle
+                              className="size-4 text-amber-500"
+                              aria-label="Unavailable model"
+                            />
+                          )}
+                          <span className="truncate" title={m.modelId}>
+                            {m.modelId}
+                          </span>
                         </span>
-                      </span>
-                      <Check
-                        className={cn(
-                          "ml-auto",
-                          isSelected ? "opacity-100" : "opacity-0",
-                        )}
-                      />
-                    </CommandItem>
-                  )
-                })}
-              </CommandGroup>
-            ))}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+                        <Check
+                          className={cn(
+                            "ml-auto",
+                            isSelected ? "opacity-100" : "opacity-0",
+                          )}
+                        />
+                      </CommandItem>
+                    )
+                  })}
+                </CommandGroup>
+              ))}
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </div>
   )
 }
 
