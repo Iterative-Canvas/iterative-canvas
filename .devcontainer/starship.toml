@@ -1,3 +1,5 @@
+# No Nerd Fonts - https://starship.rs/presets/no-nerd-font
+
 [battery]
 full_symbol = "• "
 charging_symbol = "⇡ "
