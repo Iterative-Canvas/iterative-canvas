@@ -23,6 +23,47 @@ export const getCanvasById = query({
   },
 })
 
+export const getCanvasVersionNumberById = query({
+  args: { id: v.id("canvasVersions") },
+  handler: async (ctx, { id }) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+
+    const version = await ctx.db.get(id)
+    if (!version) throw new Error(`Canvas version ${id} not found`)
+
+    const canvas = await ctx.db.get(version.canvasId)
+    if (!canvas) throw new Error(`Canvas ${version.canvasId} not found`)
+    if (canvas.userId !== userId) throw new Error("Not authorized")
+
+    let versionToDisplay = version
+
+    if (version.isDraft) {
+      if (!version.parentVersionId) {
+        throw new Error("Draft is not linked to a parent canvas version")
+      }
+
+      const parentVersion = await ctx.db.get(version.parentVersionId)
+
+      if (!parentVersion) {
+        throw new Error(`Parent version ${version.parentVersionId} not found`)
+      }
+
+      if (parentVersion.canvasId !== version.canvasId) {
+        throw new Error("Parent version belongs to a different canvas")
+      }
+
+      versionToDisplay = parentVersion
+    }
+
+    if (versionToDisplay.versionNo == null) {
+      throw new Error("Canvas version number not set")
+    }
+
+    return { canvasVersionNo: versionToDisplay.versionNo }
+  },
+})
+
 /**
  * Returns an array of folder objects (root first, then alphabetical order).
  * Each folder object contains the canvases it owns, sorted by updatedTime desc.

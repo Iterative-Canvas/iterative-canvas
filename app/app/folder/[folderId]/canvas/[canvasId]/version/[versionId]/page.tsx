@@ -26,9 +26,18 @@ export default async function App({
     { token },
   )
 
+  const canvasVersion = await preloadQuery(
+    api.public.getCanvasVersionNumberById,
+    { id: versionId },
+    { token },
+  )
+
   return (
     <>
-      <AppHeader preloadedCanvas={canvas} />
+      <AppHeader
+        preloadedCanvas={canvas}
+        preloadedCanvasVersion={canvasVersion}
+      />
       <AppContentArea />
     </>
   )

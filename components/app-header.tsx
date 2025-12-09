@@ -29,10 +29,17 @@ const actionButtons = [
 
 export const AppHeader = ({
   preloadedCanvas,
+  preloadedCanvasVersion,
 }: {
   preloadedCanvas: Preloaded<typeof api.public.getCanvasById>
+  preloadedCanvasVersion: Preloaded<
+    typeof api.public.getCanvasVersionNumberById
+  >
 }) => {
   const canvas = usePreloadedQuery(preloadedCanvas)
+  const { canvasVersionNo } = usePreloadedQuery(preloadedCanvasVersion)
+
+  const prettyVersion = `v${canvasVersionNo}`
 
   return (
     <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
@@ -43,7 +50,7 @@ export const AppHeader = ({
       />
       <div className="flex flex-1 items-center gap-2">
         <h1 className="text-lg font-semibold">
-          {canvas.name ?? "Untitled Canvas"} • v2
+          {canvas.name ?? "Untitled Canvas"} • {prettyVersion}
         </h1>
       </div>
       <div className="flex items-center gap-1">
