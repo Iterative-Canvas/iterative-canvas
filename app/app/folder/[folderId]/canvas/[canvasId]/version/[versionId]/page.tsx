@@ -27,7 +27,7 @@ export default async function App({
   )
 
   const canvasVersion = await preloadQuery(
-    api.public.getCanvasVersionNumberById,
+    api.public.getCanvasVersionById,
     { id: versionId },
     { token },
   )

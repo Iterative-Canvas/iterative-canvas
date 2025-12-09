@@ -32,14 +32,12 @@ export const AppHeader = ({
   preloadedCanvasVersion,
 }: {
   preloadedCanvas: Preloaded<typeof api.public.getCanvasById>
-  preloadedCanvasVersion: Preloaded<
-    typeof api.public.getCanvasVersionNumberById
-  >
+  preloadedCanvasVersion: Preloaded<typeof api.public.getCanvasVersionById>
 }) => {
   const canvas = usePreloadedQuery(preloadedCanvas)
-  const { canvasVersionNo } = usePreloadedQuery(preloadedCanvasVersion)
+  const canvasVersion = usePreloadedQuery(preloadedCanvasVersion)
 
-  const prettyVersion = `v${canvasVersionNo}`
+  const prettyVersionNo = `v${canvasVersion.versionNo}`
 
   return (
     <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
@@ -50,7 +48,7 @@ export const AppHeader = ({
       />
       <div className="flex flex-1 items-center gap-2">
         <h1 className="text-lg font-semibold">
-          {canvas.name ?? "Untitled Canvas"} • {prettyVersion}
+          {canvas.name ?? "Untitled Canvas"} • {prettyVersionNo}
         </h1>
       </div>
       <div className="flex items-center gap-1">

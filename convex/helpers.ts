@@ -27,7 +27,7 @@ export async function scaffoldNewCanvas(
     .withIndex("userId", (q) => q.eq("userId", userId))
     .unique()
 
-  // get the app-wide default models in case user has not set any preferences
+  // Get the app-wide default models in case user has not set any preferences
   const fallbackModels = await getAppDefaultModelDbIds(ctx)
 
   const canvasModelsToInitialize = {
@@ -71,6 +71,7 @@ export async function scaffoldNewCanvas(
     parentVersionId: versionId,
     isDraft: true,
     hasBeenEdited: false,
+    versionNo: 1,
     ...canvasModelsToInitialize,
   })
 

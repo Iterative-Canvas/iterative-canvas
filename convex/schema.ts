@@ -42,7 +42,8 @@ const schema = defineSchema({
     parentVersionId: v.optional(v.id("canvasVersions")),
     // Useful for linear versioning. Kinda irrelevant if we switch to branching.
     // A `name` field might be more useful in a branching model.
-    versionNo: v.optional(v.number()),
+    // For draft versions, set this to the versionNo of the parent version.
+    versionNo: v.number(),
     isDraft: v.boolean(),
     // This field is only applicable to draft versions
     // This allows us to track whether the draft has been
