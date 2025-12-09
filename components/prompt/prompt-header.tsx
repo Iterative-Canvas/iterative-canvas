@@ -2,7 +2,6 @@ import { Sparkles, Copy, Maximize2, Minimize2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { CardHeader, CardTitle } from "@/components/ui/card"
 import ModelCombobox from "@/components/ai-elements/model-combobox"
-import { Id } from "@/convex/_generated/dataModel"
 
 type PromptHeaderProps = {
   onMaximize?: () => void
@@ -22,17 +21,6 @@ export function PromptHeader({
       <CardTitle className="text-base font-medium">Prompt</CardTitle>
       <div className="flex items-center gap-1">
         <ModelCombobox
-          defaultValue={{
-            _id: "asdfasdf" as Id<"aiGatewayModels">,
-            modelId: "goofy/goober-1",
-            name: "Goober 1",
-            description: "A silly model for silly tasks",
-            provider: "GoofyAI",
-            input: 2048,
-            output: 2048,
-            isDeprecated: true,
-            _creationTime: Date.now(),
-          }}
           onChange={(model) => console.log({ onChangeModel: model })}
           onValidityChange={(valid) => console.log({ comboboxValidity: valid })}
           className="h-6"

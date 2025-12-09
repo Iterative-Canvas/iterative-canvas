@@ -51,92 +51,20 @@ type Requirement = {
   reasoning: string | null
 }
 
-const initialRequirements: Requirement[] = [
-  {
-    id: 1,
-    text: "There are 5 training sessions included in the program, corresponding to UL/PPL",
-    weight: 2,
-    type: "pass-fail",
-    threshold: 1,
-    model: "gpt-4o",
-    required: true,
-    fitToContent: false,
-    loading: false,
-    result: null,
-    score: null,
-    reasoning: null,
-  },
-  {
-    id: 2,
-    text: "Each training session includes one (and only one) primary compound lift such as bench press, squat, deadlift, pull-ups, etc.",
-    weight: 1,
-    type: "pass-fail",
-    threshold: 1,
-    model: "gpt-4o",
-    required: true,
-    fitToContent: false,
-    loading: false,
-    result: null,
-    score: null,
-    reasoning: null,
-  },
-  {
-    id: 3,
-    text: "Each training session contains 4-6 exercises and can be completed in roughly 1-hour",
-    weight: 2,
-    type: "subjective",
-    threshold: 0.8,
-    model: "gpt-4o",
-    required: false,
-    fitToContent: false,
-    loading: false,
-    result: null,
-    score: null,
-    reasoning: null,
-  },
-  {
-    id: 4,
-    text: "The program is suitable for a home gym and avoids exercises requiring specialized gym machines or equipment you are only likely to find at a commercial gym",
-    weight: 1,
-    type: "subjective",
-    threshold: 0.8,
-    model: "gpt-4o",
-    required: true,
-    fitToContent: false,
-    loading: false,
-    result: null,
-    score: null,
-    reasoning: null,
-  },
-  {
-    id: 5,
-    text: "Sensible guidelines are provided with regards to progressive overload (since this week-long program will be repeated for 1-2 months)",
-    weight: 1,
-    type: "subjective",
-    threshold: 0.8,
-    model: "gpt-4o",
-    required: true,
-    fitToContent: false,
-    loading: false,
-    result: null,
-    score: null,
-    reasoning: null,
-  },
-  {
-    id: 6,
-    text: "The overall program is biased towards powerbuilding (i.e. focuses on both strength _and_ hypertrophy). It should have a healthy balance of low volume/heavy weight exercises to high volume/lower weight exercises.",
-    weight: 1,
-    type: "subjective",
-    threshold: 0.7,
-    model: "gpt-4o",
-    required: true,
-    fitToContent: false,
-    loading: false,
-    result: null,
-    score: null,
-    reasoning: null,
-  },
-]
+// const exampleRequirement: Requirement = {
+//   id: 1,
+//   text: "There are 5 training sessions included in the program, corresponding to UL/PPL",
+//   weight: 2,
+//   type: "pass-fail",
+//   threshold: 1,
+//   model: "gpt-4o",
+//   required: true,
+//   fitToContent: false,
+//   loading: false,
+//   result: null,
+//   score: null,
+//   reasoning: null,
+// }
 
 // UI helpers migrated from concept page
 
@@ -202,8 +130,7 @@ const ResultIndicator = ({
 }
 
 export function EvalsContent() {
-  const [requirements, setRequirements] =
-    useState<Requirement[]>(initialRequirements)
+  const [requirements, setRequirements] = useState<Requirement[]>([])
   const [successThreshold, setSuccessThreshold] = useState(0.8)
   const [isRunAllLoading, setIsRunAllLoading] = useState(false)
   const [overallResult, setOverallResult] = useState<
