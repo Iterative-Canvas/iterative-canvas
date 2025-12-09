@@ -33,7 +33,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import ModelCombobox from "../ai-elements/model-combobox"
+import ModelCombobox from "@/components/ai-elements/model-combobox"
 import { Id } from "@/convex/_generated/dataModel"
 
 type Requirement = {

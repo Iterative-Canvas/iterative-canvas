@@ -4,6 +4,8 @@ import { Id } from "./_generated/dataModel"
 export async function getAppDefaultModelDbIds(ctx: QueryCtx) {
   const models = await ctx.db.query("aiGatewayModels").collect()
 
+  // TODO: Probably shouldn't hardcode these in the code. Should maybe move
+  // to a config table in the database. Or make the env vars.
   const promptModel = models.find((m) => m.modelId === "openai/gpt-5")
   const refineModel = models.find((m) => m.modelId === "openai/gpt-5")
   const evalsModel = models.find((m) => m.modelId === "openai/gpt-4o")
