@@ -1,0 +1,54 @@
+---
+description: This rule contains a high-level overview of the project, including product goals and requirements, repo structure, and tech stack. Apply this rule when the task is moderately complex and could benefit from a broad contextual overview.
+alwaysApply: false
+---
+
+## Project Overview
+
+This project is intended to be similar in spirit to ChatGPT, in that you have a sidebar with all your different sessions. When you select an item in the sidebar, it then becomes active in the main content area.
+
+However, instead of offering a UI that allows for turn-based chats, we take a completely different approach. Instead of "chats", the main primitive is what we refer to as a "canvas". A canvas, in turn, has 3 main components:
+
+- The user prompt
+- The response from the language model
+- The user-defined evals
+
+> Note: Since versioning is supported, the entities mentioned above are actually related to a canvas version, and canvas versions are owned by the parent canvas container.
+
+These three things allow for an iterative workflow, in which the user types a prompt, generates a response, and then sees the response evaluated independently against each of the evals. If the response fails according to the configured evals settings, then the user can iteratively refine their prompt and continue working in this loop until a satisfactory response has been achieved.
+
+This workflow is intended for users who routinely have complex prompts and are seeking a detailed response that must balance multiple variables at a time. You could view this as an evolution of the "LLM-as-judge" pattern, except in this case there are N number of judges (the evals) that are each independently grading a unique aspect of the response in parallel.
+
+Benefits of this pattern over turn-based chat:\
+Turn-based chat often leads to context rot, in which the chat grows longer and longer in length the more the user iterates, causing the language model to degrade in performance and lose the thread. Additionally, absent any structured and automated evals, it can be labor intensive for the user to quickly verify if the response satisfies their requirements.
+
+Benefits of this pattern over the regular LLM-as-judge pattern:\
+If the original model that generated the response struggled to balance all of the requirements in the user prompt, then it stands to reason that a single LLM-judge will also struggle to grade the response in a single pass.
+
+## Repo Structure
+
+- **`app/`** - Next.js App Router routes and page components. Contains the main application routes (`/app`), authentication (`/signin`), and other public pages (`/blog`, `/docs`). The `/app` route houses the core canvas workflow with nested routes for folders and canvas versions.
+- **`components/`** - Reusable React components. Includes UI primitives, canvas-specific components, evaluation components, prompt interfaces, and AI-related elements.
+  - IMPORTANT: Please avoid making any direct edits or updates to the components in `components/ui` and `components/ai-elements`, as these are installed from shadcn and serve as my component library primitives. I do not want to strongly deviate or modify my core component library.
+- **`convex/`** - Backend logic and database schema. Contains Convex functions (public and private API endpoints), database schema definitions, authentication configuration, cron jobs, and shared backend utilities.
+- **`lib/`** - Shared utility functions and configuration. Includes environment configuration, common utilities, and helper functions used across the application.
+- **`hooks/`** - Custom React hooks for state management, data fetching, drag-and-drop interactions, and other reusable client-side logic.
+- **`providers/`** - React context providers for application-wide state management, including Convex client initialization, drag-and-drop context, and app-level providers.
+- **`types/`** - Generic and reusable TypeScript type definitions shared across the codebase.
+- **`public/`** - Static assets such as images, icons, and other files served directly.
+- **`middleware.ts`** - Next.js middleware handling authentication and route protection.
+
+## Tech Stack
+
+- **Next.js** - React framework using the App Router for server-side rendering, routing, and API routes. Provides excellent developer experience and production optimizations.
+- **Convex** - Backend-as-a-service platform handling real-time database, serverless functions, and authentication. Enables reactive data fetching and automatic UI updates when data changes.
+- **React** - UI library for building interactive user interfaces with component-based architecture.
+- **TypeScript** - Type-safe JavaScript providing better developer experience, code quality, and maintainability through static type checking.
+- **Tailwind CSS** - Utility-first CSS framework for rapid UI development with consistent design tokens and responsive utilities.
+- **shadcn/ui** - Component library built on Radix UI primitives, providing accessible and customizable React components that integrate seamlessly with Tailwind CSS.
+- **Vercel AI SDK** - SDK for integrating with language models, handling streaming responses, and managing AI-related state and interactions.
+- **Convex Auth** - Authentication solution integrated with Convex, handling user sessions and protected routes.
+
+## Misc. Notes
+
+- Some parts of this codebase are organized by "layer", e.g. the `types` or `hooks` folders, or the `lib/utils.ts` file. Other parts are organized more "vertically", e.g. organized by feature such as the `components/canvas` folder, or simply by colocating a component next to a route that it is specific to. Always use your best judgement when determining which organization style is most appropriate for the task at hand.

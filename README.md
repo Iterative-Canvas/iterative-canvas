@@ -1,14 +1,29 @@
-- When creating a new canvas, we need to initialize the model being used...
-  - Allow the user to set default models for prompting, evals, and refining the canvas
-  - Pick the user's preferred model if it is still available in the AI Gateway
-  - If a default is not set, or it's no longer available, pick a model for them
-- On the frontend, we will populate the model picker with the dynamic model list from the AI Gateway
-  - If the model is no longer available (not in the list) merge it into the list/dropdown with a warning icon
-  - Additionally, disable prompting, evals, or refinements until a new model is picked
-  - Once a new model is picked, the deprecated model should disappear
+## Project Overview
 
-Note: Likely need to add a new field to the canvasVersions table for `refinementModel`
-Note: Make the prompt submit button a split-button with a secondary option of `Save withouout generating`
-Note: Add a new user setting: `Automatically run evals after generating, refining, or manually editing the canvas?`
-Note: Restrict evals to models that support structured outputs
-Note: Two sparkle options for evals... - Improve existing evals - Generate evals from prompt
+This project is intended to be similar in spirit to ChatGPT, in that you have a sidebar with all your different sessions. When you select an item in the sidebar, it then becomes active in the main content area.
+
+However, instead of offering a UI that allows for turn-based chats, we take a completely different approach. Instead of "chats", the main primitive is what we refer to as a "canvas". A canvas, in turn, has 3 main components:
+
+- The user prompt
+- The response from the language model
+- The user-defined evals
+
+> Note: Since versioning is supported, the entities mentioned above are actually related to a canvas version, and canvas versions are owned by the parent canvas container.
+
+These three things allow for an iterative workflow, in which the user types a prompt, generates a response, and then sees the response evaluated independently against each of the evals. If the response fails according to the configured evals settings, then the user can iteratively refine their prompt and continue working in this loop until a satisfactory response has been achieved.
+
+This workflow is intended for users who routinely have complex prompts and are seeking a detailed response that must balance multiple variables at a time. You could view this as an evolution of the "LLM-as-judge" pattern, except in this case there are N number of judges (the evals) that are each independently grading a unique aspect of the response in parallel.
+
+Benefits of this pattern over turn-based chat:\
+Turn-based chat often leads to context rot, in which the chat grows longer and longer in length the more the user iterates, causing the language model to degrade in performance and lose the thread. Additionally, absent any structured and automated evals, it can be labor intensive for the user to quickly verify if the response satisfies their requirements.
+
+Benefits of this pattern over the regular LLM-as-judge pattern:\
+If the original model that generated the response struggled to balance all of the requirements in the user prompt, then it stands to reason that a single LLM-judge will also struggle to grade the response in a single pass.
+
+## Repo Structure
+
+todo
+
+## Tech Stack
+
+todo
