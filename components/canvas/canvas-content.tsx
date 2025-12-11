@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 import { Response } from "@/components/ai-elements/response"
 import {
@@ -39,6 +39,14 @@ export function CanvasContent({
   const [isEditing, setIsEditing] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  useEffect(() => {
+    if (initialMarkdown === undefined) return
+    setContent(initialMarkdown)
+    if (!isEditing) {
+      setDraft(initialMarkdown)
+    }
+  }, [initialMarkdown, isEditing])
+
   const mockPersist = useCallback(async (text: string) => {
     // Simulate a backend call
     await new Promise((r) => setTimeout(r, 400))
@@ -50,9 +58,11 @@ export function CanvasContent({
     if (!isEditing) return
     setIsSubmitting(true)
     try {
-      setContent(draft)
       await (onSave ? onSave(draft) : mockPersist(draft))
+      setContent(draft)
       setIsEditing(false)
+    } catch (error) {
+      console.error("Failed to save canvas response", error)
     } finally {
       setIsSubmitting(false)
     }

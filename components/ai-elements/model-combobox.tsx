@@ -28,10 +28,11 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { api } from "@/convex/_generated/api"
-import type { Doc } from "@/convex/_generated/dataModel"
+import type { Doc, Id } from "@/convex/_generated/dataModel"
 
 export type ModelComboboxProps = {
-  defaultValue?: Doc<"aiGatewayModels"> | undefined
+  valueId?: Id<"aiGatewayModels">
+  disabled?: boolean
   onChange?: (next: Doc<"aiGatewayModels"> | undefined) => void
   onValidityChange?: (isValid: boolean) => void
   className?: string
@@ -39,22 +40,29 @@ export type ModelComboboxProps = {
 }
 
 export function ModelCombobox({
-  defaultValue,
+  valueId,
+  disabled = false,
   onChange,
   onValidityChange,
   className,
   placeholder = "No model selected",
 }: ModelComboboxProps) {
   const [open, setOpen] = React.useState(false)
+  const [selectedId, setSelectedId] = React.useState<
+    Id<"aiGatewayModels"> | undefined
+  >(valueId)
   const [selected, setSelected] = React.useState<
     Doc<"aiGatewayModels"> | undefined
-  >(defaultValue)
+  >()
   const [batteryState, setBatteryState] = React.useState<
     "medium" | "full" | "low"
   >("medium")
 
   // Load available models from Convex
-  const availableModels = useQuery(api.public.getAvailableModels)
+  const includeModelId = selectedId
+  const availableModels = useQuery(api.public.getAvailableModels, {
+    includeModelId,
+  })
 
   // Fast lookup for available models by id
   const availableById = useMemo(() => {
@@ -65,24 +73,29 @@ export function ModelCombobox({
     return map
   }, [availableModels])
 
-  // Merge the selected (possibly unavailable) model into the visible list
-  const combinedModels = useMemo(() => {
-    const base = availableModels ? [...availableModels] : []
-    if (selected && !availableById.has(selected._id)) {
-      base.push(selected)
+  React.useEffect(() => {
+    setSelectedId(valueId)
+  }, [valueId])
+
+  React.useEffect(() => {
+    if (!selectedId) {
+      setSelected(undefined)
+      return
     }
-    return base
-  }, [availableModels, availableById, selected])
+    const next = availableById.get(selectedId)
+    if (next && next._id !== selected?._id) {
+      setSelected(next)
+    }
+  }, [availableById, selectedId, selected])
 
   // Group models by provider and sort by modelId
   const groups = useMemo(() => {
     const byProvider = new Map<string, Doc<"aiGatewayModels">[]>()
-    for (const m of combinedModels) {
+    for (const m of availableModels ?? []) {
       const arr = byProvider.get(m.provider) ?? []
       arr.push(m)
       byProvider.set(m.provider, arr)
     }
-    // Sort providers alphabetically and each group's models by modelId
     const providerNames = Array.from(byProvider.keys()).sort((a, b) =>
       a.localeCompare(b),
     )
@@ -92,10 +105,10 @@ export function ModelCombobox({
         .slice()
         .sort((a, b) => a.modelId.localeCompare(b.modelId)),
     }))
-  }, [combinedModels])
+  }, [availableModels])
 
   // Compute validity: valid only if a model is selected AND it exists in available models
-  const isValid = !!(selected && availableById.has(selected._id))
+  const isValid = !!(selectedId && availableById.has(selectedId))
 
   // Reasoning models get a battery icon toggle, similar to the ModelSelector component
   const reasoningModelIds = React.useMemo(
@@ -120,51 +133,43 @@ export function ModelCombobox({
     })
   }
 
-  // Fire callbacks on initial render and when dependencies change
-  React.useEffect(() => {
-    onChange?.(selected)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected])
-
   React.useEffect(() => {
     onValidityChange?.(isValid)
   }, [isValid, onValidityChange])
 
   // Handle selection from the list
   const handleSelect = (value: string) => {
-    const id = value.split("||")[1] ?? value
-    const next =
-      availableById.get(id) ?? combinedModels.find((m) => m._id === id)
+    const id = (value.split("||")[1] ?? value) as Id<"aiGatewayModels">
+    const next = availableById.get(id)
+    setSelectedId(id)
     setSelected(next)
     setOpen(false)
+    onChange?.(next)
   }
 
   // Display label for the button
   const displayLabel = selected ? selected.name : placeholder
-  const showWarning = !!(selected && !availableById.has(selected._id))
+  const showWarning = !!(
+    selected &&
+    availableModels &&
+    !availableById.has(selected._id)
+  )
 
   return (
     <div className="flex items-center gap-1">
-      {showBattery && (
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={handleBatteryClick}
-          aria-label={`Battery ${batteryState}`}
-        >
-          <BatteryIcon className="h-4 w-4" />
-        </Button>
-      )}
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover
+        open={disabled ? false : open}
+        onOpenChange={disabled ? undefined : setOpen}
+      >
         <PopoverTrigger asChild>
           <Button
             type="button"
             variant="outline"
             role="combobox"
-            aria-expanded={open}
+            aria-expanded={disabled ? false : open}
+            aria-disabled={disabled}
             className={cn("max-w-48 flex items-center text-xs", className)}
+            disabled={disabled}
           >
             {showWarning && (
               <AlertTriangle
@@ -227,6 +232,19 @@ export function ModelCombobox({
           </Command>
         </PopoverContent>
       </Popover>
+      {showBattery && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={handleBatteryClick}
+          disabled={disabled}
+          aria-label={`Battery ${batteryState}`}
+        >
+          <BatteryIcon className="h-4 w-4" />
+        </Button>
+      )}
     </div>
   )
 }

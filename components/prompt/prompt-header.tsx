@@ -1,15 +1,22 @@
+"use client"
+
 import { Sparkles, Copy, Maximize2, Minimize2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { CardHeader, CardTitle } from "@/components/ui/card"
 import ModelCombobox from "@/components/ai-elements/model-combobox"
+import type { Doc, Id } from "@/convex/_generated/dataModel"
 
 type PromptHeaderProps = {
+  modelId?: Id<"aiGatewayModels">
+  onModelChange?: (model: Doc<"aiGatewayModels"> | undefined) => void
   onMaximize?: () => void
   onRestore?: () => void
   isMaximized?: boolean
 }
 
 export function PromptHeader({
+  modelId,
+  onModelChange,
   onMaximize,
   onRestore,
   isMaximized = false,
@@ -21,8 +28,8 @@ export function PromptHeader({
       <CardTitle className="text-base font-medium">Prompt</CardTitle>
       <div className="flex items-center gap-1">
         <ModelCombobox
-          onChange={(model) => console.log({ onChangeModel: model })}
-          onValidityChange={(valid) => console.log({ comboboxValidity: valid })}
+          valueId={modelId}
+          onChange={onModelChange}
           className="h-6"
         />
         <Button variant="ghost" size="icon" className="h-8 w-8">

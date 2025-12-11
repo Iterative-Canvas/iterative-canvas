@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { cn } from "@/lib/utils"
 import { Card, CardContent } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
@@ -34,15 +34,17 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import ModelCombobox from "@/components/ai-elements/model-combobox"
-import { Id } from "@/convex/_generated/dataModel"
+import { useQuery } from "convex/react"
+import { api } from "@/convex/_generated/api"
+import type { Doc, Id } from "@/convex/_generated/dataModel"
 
 type Requirement = {
-  id: number
+  id: Id<"evals">
   text: string
   weight: number
   type: "pass-fail" | "subjective"
   threshold: number
-  model: string
+  modelId?: Id<"aiGatewayModels">
   required: boolean
   fitToContent: boolean
   loading: boolean
@@ -129,9 +131,15 @@ const ResultIndicator = ({
   )
 }
 
-export function EvalsContent() {
+type EvalsContentProps = {
+  canvasVersion: Doc<"canvasVersions">
+}
+
+export function EvalsContent({ canvasVersion }: EvalsContentProps) {
   const [requirements, setRequirements] = useState<Requirement[]>([])
-  const [successThreshold, setSuccessThreshold] = useState(0.8)
+  const [successThreshold, setSuccessThreshold] = useState(
+    canvasVersion.successThreshold ?? 0.8,
+  )
   const [isRunAllLoading, setIsRunAllLoading] = useState(false)
   const [overallResult, setOverallResult] = useState<
     Pick<ResultIndicatorProps, "result" | "score" | "reasoning">
@@ -141,8 +149,59 @@ export function EvalsContent() {
     reasoning: null,
   })
 
+  const evals = useQuery(api.public.getEvalsForCanvasVersion, {
+    canvasVersionId: canvasVersion._id,
+  })
+
+  const normalizedRequirements = useMemo(() => {
+    if (!evals) return undefined
+    return evals.map((record) => {
+      const type: Requirement["type"] =
+        record.type === "pass_fail" ? "pass-fail" : "subjective"
+      const threshold =
+        record.threshold ?? (record.type === "pass_fail" ? 1 : 0)
+      const score = record.score ?? null
+      const result: Requirement["result"] =
+        score === null
+          ? null
+          : record.type === "pass_fail"
+            ? score >= threshold
+              ? "pass"
+              : "fail"
+            : score >= threshold
+              ? "pass"
+              : "fail"
+
+      return {
+        id: record._id,
+        text: record.eval ?? "",
+        weight: record.weight,
+        type,
+        threshold,
+        modelId: record.modelId,
+        required: record.isRequired,
+        fitToContent: false,
+        loading: false,
+        result,
+        score,
+        reasoning: record.explanation ?? null,
+      }
+    })
+  }, [evals])
+
+  useEffect(() => {
+    if (normalizedRequirements) {
+      setRequirements(normalizedRequirements)
+    }
+  }, [normalizedRequirements])
+
+  useEffect(() => {
+    const next = canvasVersion.successThreshold ?? 0.8
+    setSuccessThreshold((prev) => (prev === next ? prev : next))
+  }, [canvasVersion.successThreshold])
+
   const handleRequirementChange = <K extends keyof Requirement>(
-    id: number,
+    id: Id<"evals">,
     field: K,
     value: Requirement[K],
   ) => {
@@ -151,7 +210,7 @@ export function EvalsContent() {
     )
   }
 
-  const toggleFitToContent = (id: number) => {
+  const toggleFitToContent = (id: Id<"evals">) => {
     setRequirements((prev) =>
       prev.map((req) =>
         req.id === id ? { ...req, fitToContent: !req.fitToContent } : req,
@@ -191,7 +250,7 @@ export function EvalsContent() {
     }
   }
 
-  const handleRunRequirement = async (id: number) => {
+  const handleRunRequirement = async (id: Id<"evals">) => {
     setRequirements((prev) =>
       prev.map((req) =>
         req.id === id
@@ -380,22 +439,10 @@ export function EvalsContent() {
                       )}
                       <div className="ml-auto flex items-center gap-1">
                         <ModelCombobox
-                          defaultValue={{
-                            _id: "asdfasdf" as Id<"aiGatewayModels">,
-                            modelId: "goofy/goober-1",
-                            name: "Goober 1",
-                            description: "A silly model for silly tasks",
-                            provider: "GoofyAI",
-                            input: 2048,
-                            output: 2048,
-                            isDeprecated: true,
-                            _creationTime: Date.now(),
-                          }}
-                          onChange={(model) =>
-                            console.log({ onChangeModel: model })
-                          }
-                          onValidityChange={(valid) =>
-                            console.log({ comboboxValidity: valid })
+                          valueId={req.modelId}
+                          disabled
+                          placeholder={
+                            req.modelId ? "Loading model..." : "No model set"
                           }
                           className="h-6"
                         />

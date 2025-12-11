@@ -5,6 +5,7 @@ import {
   getCanvasesByFolderIdWithUpdatedTime,
   scaffoldNewCanvas,
   deleteCanvasDeep,
+  touchCanvasUpdatedTime,
 } from "./helpers"
 import { v } from "convex/values"
 
@@ -37,6 +38,30 @@ export const getCanvasVersionById = query({
     if (canvas.userId !== userId) throw new Error("Not authorized")
 
     return version
+  },
+})
+
+export const getEvalsForCanvasVersion = query({
+  args: { canvasVersionId: v.id("canvasVersions") },
+  handler: async (ctx, { canvasVersionId }) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+
+    const version = await ctx.db.get(canvasVersionId)
+    if (!version) throw new Error(`Canvas version ${canvasVersionId} not found`)
+
+    const canvas = await ctx.db.get(version.canvasId)
+    if (!canvas) throw new Error(`Canvas ${version.canvasId} not found`)
+    if (canvas.userId !== userId) throw new Error("Not authorized")
+
+    const evals = await ctx.db
+      .query("evals")
+      .withIndex("canvasVersionId", (q) =>
+        q.eq("canvasVersionId", canvasVersionId),
+      )
+      .collect()
+
+    return evals.sort((a, b) => a._creationTime - b._creationTime)
   },
 })
 
@@ -326,7 +351,8 @@ export const moveCanvasToFolder = mutation({
 })
 
 export const getAvailableModels = query({
-  handler: async (ctx) => {
+  args: { includeModelId: v.optional(v.id("aiGatewayModels")) },
+  handler: async (ctx, { includeModelId }) => {
     const userId = await getAuthUserId(ctx)
     if (!userId) throw new Error("Not authenticated")
 
@@ -337,6 +363,84 @@ export const getAvailableModels = query({
       )
       .collect()
 
+    if (includeModelId) {
+      const selected = await ctx.db.get(includeModelId)
+      if (selected && !availableModels.find((m) => m._id === includeModelId)) {
+        availableModels.push(selected)
+      }
+    }
+
     return availableModels
+  },
+})
+
+export const updateCanvasVersionPromptModel = mutation({
+  args: {
+    canvasVersionId: v.id("canvasVersions"),
+    promptModelId: v.id("aiGatewayModels"),
+  },
+  handler: async (ctx, { canvasVersionId, promptModelId }) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+
+    const version = await ctx.db.get(canvasVersionId)
+    if (!version) throw new Error(`Canvas version ${canvasVersionId} not found`)
+
+    const canvas = await ctx.db.get(version.canvasId)
+    if (!canvas) throw new Error(`Canvas ${version.canvasId} not found`)
+    if (canvas.userId !== userId) throw new Error("Not authorized")
+
+    const model = await ctx.db.get(promptModelId)
+    if (!model) throw new Error(`Model ${promptModelId} not found`)
+
+    await ctx.db.patch(canvasVersionId, {
+      promptModelId: model._id,
+    })
+
+    await touchCanvasUpdatedTime(ctx, canvas._id)
+  },
+})
+
+export const updateCanvasVersionPrompt = mutation({
+  args: { canvasVersionId: v.id("canvasVersions"), prompt: v.string() },
+  handler: async (ctx, { canvasVersionId, prompt }) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+
+    const version = await ctx.db.get(canvasVersionId)
+    if (!version) throw new Error(`Canvas version ${canvasVersionId} not found`)
+
+    const canvas = await ctx.db.get(version.canvasId)
+    if (!canvas) throw new Error(`Canvas ${version.canvasId} not found`)
+    if (canvas.userId !== userId) throw new Error("Not authorized")
+
+    await ctx.db.patch(canvasVersionId, {
+      prompt,
+      hasBeenEdited: true,
+    })
+
+    await touchCanvasUpdatedTime(ctx, canvas._id)
+  },
+})
+
+export const updateCanvasVersionResponse = mutation({
+  args: { canvasVersionId: v.id("canvasVersions"), response: v.string() },
+  handler: async (ctx, { canvasVersionId, response }) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+
+    const version = await ctx.db.get(canvasVersionId)
+    if (!version) throw new Error(`Canvas version ${canvasVersionId} not found`)
+
+    const canvas = await ctx.db.get(version.canvasId)
+    if (!canvas) throw new Error(`Canvas ${version.canvasId} not found`)
+    if (canvas.userId !== userId) throw new Error("Not authorized")
+
+    await ctx.db.patch(canvasVersionId, {
+      response,
+      hasBeenEdited: true,
+    })
+
+    await touchCanvasUpdatedTime(ctx, canvas._id)
   },
 })

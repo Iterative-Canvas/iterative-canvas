@@ -1,14 +1,19 @@
+"use client"
+
 import { Card } from "@/components/ui/card"
 import { EvalsContent } from "./evals-content"
 import { EvalsHeader } from "./evals-header"
+import type { Doc } from "@/convex/_generated/dataModel"
 
 type EvalsSectionProps = {
+  canvasVersion: Doc<"canvasVersions">
   onMaximize?: () => void
   onRestore?: () => void
   isMaximized?: boolean
 }
 
 export function EvalsSection({
+  canvasVersion,
   onMaximize,
   onRestore,
   isMaximized,
@@ -20,7 +25,7 @@ export function EvalsSection({
         onRestore={onRestore}
         isMaximized={isMaximized}
       />
-      <EvalsContent />
+      <EvalsContent canvasVersion={canvasVersion} />
     </Card>
   )
 }

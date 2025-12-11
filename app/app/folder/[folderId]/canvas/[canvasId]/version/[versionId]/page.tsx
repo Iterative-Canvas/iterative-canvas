@@ -38,7 +38,7 @@ export default async function App({
         preloadedCanvas={canvas}
         preloadedCanvasVersion={canvasVersion}
       />
-      <AppContentArea />
+      <AppContentArea preloadedCanvasVersion={canvasVersion} />
     </>
   )
 }

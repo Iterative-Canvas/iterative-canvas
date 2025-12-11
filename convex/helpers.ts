@@ -83,6 +83,25 @@ export async function scaffoldNewCanvas(
   return { canvasId, versionId: draftVersionId }
 }
 
+export async function touchCanvasUpdatedTime(
+  ctx: MutationCtx,
+  canvasId: Id<"canvases">,
+) {
+  const existing = await ctx.db
+    .query("entityUpdates")
+    .withIndex("canvasId", (q) => q.eq("canvasId", canvasId))
+    .unique()
+
+  const updatedTime = Date.now()
+
+  if (existing) {
+    await ctx.db.patch(existing._id, { updatedTime })
+    return
+  }
+
+  await ctx.db.insert("entityUpdates", { canvasId, updatedTime })
+}
+
 export async function getCanvasesByFolderIdWithUpdatedTime(
   ctx: QueryCtx,
   userId: Id<"users">,

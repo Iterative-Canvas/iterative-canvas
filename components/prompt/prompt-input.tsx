@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 import { Response } from "@/components/ai-elements/response"
 import {
@@ -29,9 +29,10 @@ import {
 type Props = {
   initialMarkdown?: string
   className?: string
+  onSave?: (text: string) => Promise<void> | void
 }
 
-export function PromptInput({ initialMarkdown, className }: Props) {
+export function PromptInput({ initialMarkdown, className, onSave }: Props) {
   const [content, setContent] = useState(
     initialMarkdown ??
       "# Hello!\n\nWrite your prompt here. Use **Markdown** for rich text.",
@@ -40,19 +41,36 @@ export function PromptInput({ initialMarkdown, className }: Props) {
   const [isEditing, setIsEditing] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const submitToBackend = useCallback(async (text: string) => {
-    await new Promise((r) => setTimeout(r, 450))
-    console.log("submitToBackend", { text })
-  }, [])
+  useEffect(() => {
+    if (initialMarkdown === undefined) return
+    setContent(initialMarkdown)
+    if (!isEditing) {
+      setDraft(initialMarkdown)
+    }
+  }, [initialMarkdown, isEditing])
+
+  const submitToBackend = useCallback(
+    async (text: string) => {
+      if (onSave) {
+        await onSave(text)
+        return
+      }
+      await new Promise((r) => setTimeout(r, 450))
+      console.log("submitToBackend", { text })
+    },
+    [onSave],
+  )
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!isEditing) return
     setIsSubmitting(true)
     try {
-      setContent(draft)
       await submitToBackend(draft)
+      setContent(draft)
       setIsEditing(false)
+    } catch (error) {
+      console.error("Failed to save prompt", error)
     } finally {
       setIsSubmitting(false)
     }

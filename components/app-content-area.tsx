@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from "react"
+import { Preloaded, usePreloadedQuery } from "convex/react"
 import {
   Panel as PanelPrimitive,
   PanelGroup as PanelGroupPrimitive,
@@ -19,6 +20,8 @@ import { PromptSection } from "@/components/prompt/prompt-section"
 import { CanvasSection } from "@/components/canvas/canvas-section"
 import { EvalsSection } from "@/components/evals/evals-section"
 import { cn } from "@/lib/utils"
+import { api } from "@/convex/_generated/api"
+import type { Doc } from "@/convex/_generated/dataModel"
 
 const DEFAULT_HORIZONTAL_LAYOUT: [number, number] = [50, 50]
 const DEFAULT_VERTICAL_LAYOUT: [number, number] = [50, 50]
@@ -56,7 +59,15 @@ const Panel = forwardRef<
 ))
 Panel.displayName = "Panel"
 
-export function AppContentArea() {
+export function AppContentArea({
+  preloadedCanvasVersion,
+}: {
+  preloadedCanvasVersion: Preloaded<typeof api.public.getCanvasVersionById>
+}) {
+  const canvasVersion: Doc<"canvasVersions"> = usePreloadedQuery(
+    preloadedCanvasVersion,
+  )
+
   const horizontalGroupRef = useRef<ImperativePanelGroupHandle>(null)
   const verticalGroupRef = useRef<ImperativePanelGroupHandle>(null)
   const leftPanelRef = useRef<ImperativePanelHandle>(null)
@@ -157,6 +168,7 @@ export function AppContentArea() {
             onResize={(size) => setPromptCollapsed(size === 0)}
           >
             <PromptSection
+              canvasVersion={canvasVersion}
               onMaximize={maximizePromptPanel}
               onRestore={resetPanelsLayout}
               isMaximized={promptMaximized}
@@ -171,6 +183,7 @@ export function AppContentArea() {
             onResize={(size) => setEvalsCollapsed(size === 0)}
           >
             <EvalsSection
+              canvasVersion={canvasVersion}
               onMaximize={maximizeEvalsPanel}
               onRestore={resetPanelsLayout}
               isMaximized={evalsMaximized}
@@ -187,6 +200,7 @@ export function AppContentArea() {
         onResize={(size) => setCanvasCollapsed(size === 0)}
       >
         <CanvasSection
+          canvasVersion={canvasVersion}
           onMaximize={maximizeCanvasPanel}
           onRestore={resetPanelsLayout}
           isMaximized={canvasMaximized}
