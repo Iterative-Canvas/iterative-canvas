@@ -18,7 +18,7 @@ export default async function App({
   const token = await convexAuthNextjsToken()
   if (!token) redirect("/signin")
 
-  const { folderId, canvasId, versionId } = await params
+  const { folderId: _folderId, canvasId, versionId } = await params
 
   const canvas = await preloadQuery(
     api.public.getCanvasById,
