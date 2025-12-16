@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useRef, useState } from "react"
 import { useCompletion } from "@ai-sdk/react"
 import {
   Archive,
@@ -616,14 +616,11 @@ export default function App() {
     }
   }
 
-  const { completion, input, handleInputChange, handleSubmit, isLoading } =
-    useCompletion({
-      api: "/api/generate-response",
-    })
-
-  useEffect(() => {
-    if (completion) setCanvas(completion)
-  }, [completion])
+  const { input, handleInputChange, handleSubmit, isLoading } = useCompletion({
+    api: "/api/generate-response",
+    // Keep the canvas in sync with the generated completion as soon as it arrives.
+    onFinish: (_prompt, newCompletion) => setCanvas(newCompletion),
+  })
 
   const models = [
     "gpt-4o",
