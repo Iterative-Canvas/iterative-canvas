@@ -389,7 +389,7 @@ export function EvalsContent() {
                             input: 2048,
                             output: 2048,
                             isDeprecated: true,
-                            _creationTime: Date.now(),
+                            _creationTime: 0,
                           }}
                           onChange={(model) =>
                             console.log({ onChangeModel: model })
