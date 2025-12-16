@@ -10,7 +10,7 @@
     "test": "vitest",
     "shadcn": "sh -c 'npx shadcn@latest add \"$@\"' _",
     "format": "prettier . --write",
-    "print-repo": "tree -I \"node_modules|.git|.devcontainer|.github|.next\""
+    "print-repo": "tree -I \"node_modules|.git|.next|.cursor|.github|.devcontainer\""
   },
   "dependencies": {
     "@ai-sdk/gateway": "^1.0.15",
