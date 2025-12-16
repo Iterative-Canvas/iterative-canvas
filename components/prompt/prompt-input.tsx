@@ -34,7 +34,7 @@ type Props = {
 export function PromptInput({ initialMarkdown, className }: Props) {
   const [content, setContent] = useState(
     initialMarkdown ??
-      "# Hello!\n\nWrite your prompt here. Use **Markdown** for rich text.",
+      "### Hello!\n\nWrite your prompt here. Use **markdown** for rich text.",
   )
   const [draft, setDraft] = useState(content)
   const [isEditing, setIsEditing] = useState(false)
