@@ -33,6 +33,7 @@ export function useBufferedState<T, D>(
 } {
   const [currentVal, setCurrentVal] = useState(upstream)
   const upstreamRef = useRef(upstream)
+  // eslint-disable-next-line react-hooks/refs -- this file is vendored code, trust that it's correct
   upstreamRef.current = upstream
   const doSync = () => {
     console.log("sync!")

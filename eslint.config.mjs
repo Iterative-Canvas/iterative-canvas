@@ -34,6 +34,9 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Convex
     "convex/_generated/**",
+    // shadcn and ai elements
+    "components/ui/**",
+    "components/ai-elements/**",
   ]),
 ])
 

@@ -89,6 +89,7 @@ export function makeUseQueryWithStatus(useQueriesHook: typeof useQueries) {
           args,
         },
       }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional for this use case
     }, [getFunctionName(query), JSON.stringify(args)])
     const result = useQueriesHook(queries)
     if (args === "skip") {
