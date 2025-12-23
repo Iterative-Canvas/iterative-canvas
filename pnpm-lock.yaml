@@ -19,7 +19,7 @@ importers:
         version: 0.37.4
       '@convex-dev/auth':
         specifier: ^0.0.90
-        version: 0.0.90(@auth/core@0.37.4)(convex@1.31.0(react@19.2.3))(react@19.2.3)
+        version: 0.0.90(@auth/core@0.37.4)(convex@1.31.2(react@19.2.3))(react@19.2.3)
       '@radix-ui/react-avatar':
         specifier: ^1.1.10
         version: 1.1.11(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -75,8 +75,8 @@ importers:
         specifier: ^1.1.1
         version: 1.1.1(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       convex:
-        specifier: ^1.31.0
-        version: 1.31.0(react@19.2.3)
+        specifier: ^1.31.2
+        version: 1.31.2(react@19.2.3)
       embla-carousel-react:
         specifier: ^8.6.0
         version: 8.6.0(react@19.2.3)
@@ -2194,8 +2194,8 @@ packages:
   convert-source-map@2.0.0:
     resolution: {integrity: sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg==}
 
-  convex@1.31.0:
-    resolution: {integrity: sha512-ht3dtpWQmxX62T8PT3p/5PDlRzSW5p2IDTP4exKjQ5dqmvhtn1wLFakJAX4CCeu1s0Ch0dKY5g2dk/wETTRAOw==}
+  convex@1.31.2:
+    resolution: {integrity: sha512-RFuJOwlL2bM5X63egvBI5ZZZH6wESREpAbHsLjODxzDeJuewTLKrEnbvHV/NWp1uJYpgEFJziuGHmZ0tnAmmJg==}
     engines: {node: '>=18.0.0', npm: '>=7.0.0'}
     hasBin: true
     peerDependencies:
@@ -4499,12 +4499,12 @@ snapshots:
 
   '@chevrotain/utils@11.0.3': {}
 
-  '@convex-dev/auth@0.0.90(@auth/core@0.37.4)(convex@1.31.0(react@19.2.3))(react@19.2.3)':
+  '@convex-dev/auth@0.0.90(@auth/core@0.37.4)(convex@1.31.2(react@19.2.3))(react@19.2.3)':
     dependencies:
       '@auth/core': 0.37.4
       '@oslojs/crypto': 1.0.1
       '@oslojs/encoding': 1.1.0
-      convex: 1.31.0(react@19.2.3)
+      convex: 1.31.2(react@19.2.3)
       cookie: 1.1.1
       is-network-error: 1.3.0
       jose: 5.10.0
@@ -6225,7 +6225,7 @@ snapshots:
 
   convert-source-map@2.0.0: {}
 
-  convex@1.31.0(react@19.2.3):
+  convex@1.31.2(react@19.2.3):
     dependencies:
       esbuild: 0.25.4
       prettier: 3.7.4
