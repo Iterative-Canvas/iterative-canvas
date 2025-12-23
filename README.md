@@ -4,4 +4,4 @@ Similar in spirit to ChatGPT, but instead of a long-running and turn-based chat,
 
 ---
 
-![Iterative Canvas](./public/images/iterative-canvas.png)
+![Iterative Canvas](./public/iterative-canvas.png)
