@@ -548,6 +548,8 @@ const ToolsPopover = ({ enabledTools, onToolChange }: ToolsPopoverProps) => {
   )
 }
 
+// THIS IS THE OLD CONCEPT PAGE
+
 export default function App() {
   const [canvas, setCanvas] = useState("")
   const [selectedModel, setSelectedModel] = useState("gpt-4o")

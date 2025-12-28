@@ -9,7 +9,6 @@ import {
   PromptInputToolbar,
   PromptInputTools,
   PromptInputButton,
-  PromptInputSubmit,
 } from "@/components/ai-elements/prompt-input"
 import {
   PencilIcon,
@@ -17,6 +16,7 @@ import {
   SettingsIcon,
   FileIcon,
   ImageIcon,
+  SendIcon,
 } from "lucide-react"
 import { CardContent } from "@/components/ui/card"
 import {
@@ -25,6 +25,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu"
+import { Button } from "@/components/ui/button"
+import { SplitButton } from "@/components/split-button"
 import { usePreloadedQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { Preloaded } from "convex/react"
@@ -62,24 +64,44 @@ export function PromptInput({ preloadedCanvasVersion, className }: Props) {
 
   const updatePrompt = useMutation(api.public.updateCanvasVersionPrompt)
 
-  const submitToBackend = useCallback(async (text: string) => {
-    if (!versionId) {
-      console.warn("Cannot submit prompt: versionId is missing")
-      return
-    }
-    await updatePrompt({
-      versionId,
-      prompt: text || undefined,
-    })
-  }, [versionId, updatePrompt])
+  const submitToBackend = useCallback(
+    async (text: string, skipEvals: boolean = false) => {
+      if (!versionId) {
+        console.warn("Cannot submit prompt: versionId is missing")
+        return
+      }
+      await updatePrompt({
+        versionId,
+        prompt: text || undefined,
+        skipEvals,
+      })
+    },
+    [versionId, updatePrompt],
+  )
 
-  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
+  // handleSubmit is used in two places:
+  // 1. Form's onSubmit handler - triggered when Enter is pressed in the textarea
+  // 2. Primary button's onClick handler - triggered when the button is clicked
+  // The button has type="button" so it doesn't trigger form submission, therefore
+  // this function is not actually executed twice.
+  const handleSubmit = async () => {
     if (!isEditing) return
     setIsSubmitting(true)
     try {
       setContent(draft)
-      await submitToBackend(draft)
+      await submitToBackend(draft, false)
+      setIsEditing(false)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleSubmitWithSkipEvals = async () => {
+    if (!isEditing) return
+    setIsSubmitting(true)
+    try {
+      setContent(draft)
+      await submitToBackend(draft, true)
       setIsEditing(false)
     } finally {
       setIsSubmitting(false)
@@ -89,7 +111,10 @@ export function PromptInput({ preloadedCanvasVersion, className }: Props) {
   return (
     <CardContent className="flex-1 min-h-0">
       <AIPromptInput
-        onSubmit={onSubmit}
+        onSubmit={(e) => {
+          e.preventDefault()
+          handleSubmit()
+        }}
         className={cn(
           "size-full min-w-[26rem] min-h-[15rem] flex flex-col",
           className,
@@ -155,7 +180,26 @@ export function PromptInput({ preloadedCanvasVersion, className }: Props) {
                 >
                   <XIcon size={16} />
                 </PromptInputButton>
-                <PromptInputSubmit disabled={isSubmitting} aria-label="Send" />
+                <SplitButton
+                  disabled={!draft || isSubmitting}
+                  loading={isSubmitting}
+                  tooltipText="Please enter a prompt to run."
+                >
+                  <Button
+                    type="button"
+                    onClick={handleSubmit}
+                    aria-label="Send"
+                  >
+                    <SendIcon size={16} />
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleSubmitWithSkipEvals}
+                    aria-label="Run Without Evaluating Requirements"
+                  >
+                    Run Without Evaluating Requirements
+                  </Button>
+                </SplitButton>
               </>
             )}
           </div>
