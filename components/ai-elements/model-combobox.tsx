@@ -10,7 +10,6 @@ import {
   BatteryFull,
   BatteryLow,
 } from "lucide-react"
-import { useQuery } from "convex/react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -27,34 +26,35 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { api } from "@/convex/_generated/api"
 import type { Doc } from "@/convex/_generated/dataModel"
 
 export type ModelComboboxProps = {
-  defaultValue?: Doc<"aiGatewayModels"> | undefined
+  value?: Doc<"aiGatewayModels">
   onChange?: (next: Doc<"aiGatewayModels"> | undefined) => void
-  onValidityChange?: (isValid: boolean) => void
   className?: string
   placeholder?: string
+  availableModels: Doc<"aiGatewayModels">[]
 }
 
 export function ModelCombobox({
-  defaultValue,
+  value,
   onChange,
-  onValidityChange,
   className,
   placeholder = "No model selected",
+  availableModels,
 }: ModelComboboxProps) {
   const [open, setOpen] = React.useState(false)
   const [selected, setSelected] = React.useState<
     Doc<"aiGatewayModels"> | undefined
-  >(defaultValue)
+  >(value)
   const [batteryState, setBatteryState] = React.useState<
     "medium" | "full" | "low"
   >("medium")
 
-  // Load available models from Convex
-  const availableModels = useQuery(api.public.getAvailableModels)
+  // Sync selected state when value changes (for reactive updates)
+  React.useEffect(() => {
+    setSelected(value)
+  }, [value])
 
   // Fast lookup for available models by id
   const availableById = useMemo(() => {
@@ -67,7 +67,7 @@ export function ModelCombobox({
 
   // Merge the selected (possibly unavailable) model into the visible list
   const combinedModels = useMemo(() => {
-    const base = availableModels ? [...availableModels] : []
+    const base = [...availableModels]
     if (selected && !availableById.has(selected._id)) {
       base.push(selected)
     }
@@ -93,9 +93,6 @@ export function ModelCombobox({
         .sort((a, b) => a.modelId.localeCompare(b.modelId)),
     }))
   }, [combinedModels])
-
-  // Compute validity: valid only if a model is selected AND it exists in available models
-  const isValid = !!(selected && availableById.has(selected._id))
 
   // Reasoning models get a battery icon toggle, similar to the ModelSelector component
   const reasoningModelIds = React.useMemo(
@@ -125,10 +122,6 @@ export function ModelCombobox({
     onChange?.(selected)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected])
-
-  React.useEffect(() => {
-    onValidityChange?.(isValid)
-  }, [isValid, onValidityChange])
 
   // Handle selection from the list
   const handleSelect = (value: string) => {

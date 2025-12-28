@@ -19,6 +19,8 @@ import { PromptSection } from "@/components/prompt/prompt-section"
 import { CanvasSection } from "@/components/canvas/canvas-section"
 import { EvalsSection } from "@/components/evals/evals-section"
 import { cn } from "@/lib/utils"
+import { Preloaded } from "convex/react"
+import { api } from "@/convex/_generated/api"
 
 const DEFAULT_HORIZONTAL_LAYOUT: [number, number] = [50, 50]
 const DEFAULT_VERTICAL_LAYOUT: [number, number] = [50, 50]
@@ -56,7 +58,13 @@ const Panel = forwardRef<
 ))
 Panel.displayName = "Panel"
 
-export function AppContentArea() {
+export function AppContentArea({
+  preloadedCanvasVersion,
+  preloadedAvailableModels,
+}: {
+  preloadedCanvasVersion?: Preloaded<typeof api.public.getCanvasVersionById>
+  preloadedAvailableModels?: Preloaded<typeof api.public.getAvailableModels>
+}) {
   const horizontalGroupRef = useRef<ImperativePanelGroupHandle>(null)
   const verticalGroupRef = useRef<ImperativePanelGroupHandle>(null)
   const leftPanelRef = useRef<ImperativePanelHandle>(null)
@@ -160,6 +168,8 @@ export function AppContentArea() {
               onMaximize={maximizePromptPanel}
               onRestore={resetPanelsLayout}
               isMaximized={promptMaximized}
+              preloadedCanvasVersion={preloadedCanvasVersion}
+              preloadedAvailableModels={preloadedAvailableModels}
             />
           </Panel>
           <ResizableHandle withHandle className="bg-primary/25" />
@@ -174,6 +184,7 @@ export function AppContentArea() {
               onMaximize={maximizeEvalsPanel}
               onRestore={resetPanelsLayout}
               isMaximized={evalsMaximized}
+              preloadedAvailableModels={preloadedAvailableModels}
             />
           </Panel>
         </PanelGroup>

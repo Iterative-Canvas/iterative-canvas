@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useState } from "react"
+import { useCallback, useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { Response } from "@/components/ai-elements/response"
 import {
@@ -25,25 +25,53 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu"
+import { usePreloadedQuery, useMutation } from "convex/react"
+import { api } from "@/convex/_generated/api"
+import { Preloaded } from "convex/react"
+
+const DEFAULT_PROMPT = "### Hello!\n\nWrite your prompt here. Use **markdown** for rich text."
 
 type Props = {
-  initialMarkdown?: string
+  preloadedCanvasVersion?: Preloaded<typeof api.public.getCanvasVersionById>
   className?: string
 }
 
-export function PromptInput({ initialMarkdown, className }: Props) {
+export function PromptInput({ preloadedCanvasVersion, className }: Props) {
+  const canvasVersion = preloadedCanvasVersion
+    ? usePreloadedQuery(preloadedCanvasVersion)
+    : null
+
+  const prompt = canvasVersion?.prompt
+  const versionId = canvasVersion?._id
+
   const [content, setContent] = useState(
-    initialMarkdown ??
-      "### Hello!\n\nWrite your prompt here. Use **markdown** for rich text.",
+    prompt ?? DEFAULT_PROMPT,
   )
   const [draft, setDraft] = useState(content)
   const [isEditing, setIsEditing] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  // Update content when prompt changes (e.g., when preloaded data arrives)
+  useEffect(() => {
+    if (prompt !== undefined && !isEditing) {
+      const newContent = prompt ?? DEFAULT_PROMPT
+      setContent(newContent)
+      setDraft(newContent)
+    }
+  }, [prompt, isEditing])
+
+  const updatePrompt = useMutation(api.public.updateCanvasVersionPrompt)
+
   const submitToBackend = useCallback(async (text: string) => {
-    await new Promise((r) => setTimeout(r, 450))
-    console.log("submitToBackend", { text })
-  }, [])
+    if (!versionId) {
+      console.warn("Cannot submit prompt: versionId is missing")
+      return
+    }
+    await updatePrompt({
+      versionId,
+      prompt: text || undefined,
+    })
+  }, [versionId, updatePrompt])
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()

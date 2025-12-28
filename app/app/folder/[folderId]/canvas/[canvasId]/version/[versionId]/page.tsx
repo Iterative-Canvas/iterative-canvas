@@ -20,17 +20,23 @@ export default async function App({
 
   const { folderId: _folderId, canvasId, versionId } = await params
 
-  const canvas = await preloadQuery(
-    api.public.getCanvasById,
-    { id: canvasId },
-    { token },
-  )
-
-  const canvasVersion = await preloadQuery(
-    api.public.getCanvasVersionById,
-    { id: versionId },
-    { token },
-  )
+  const [canvas, canvasVersion, availableModels] = await Promise.all([
+    preloadQuery(
+      api.public.getCanvasById,
+      { id: canvasId },
+      { token },
+    ),
+    preloadQuery(
+      api.public.getCanvasVersionById,
+      { id: versionId },
+      { token },
+    ),
+    preloadQuery(
+      api.public.getAvailableModels,
+      {},
+      { token },
+    ),
+  ])
 
   return (
     <>
@@ -38,7 +44,10 @@ export default async function App({
         preloadedCanvas={canvas}
         preloadedCanvasVersion={canvasVersion}
       />
-      <AppContentArea />
+      <AppContentArea
+        preloadedCanvasVersion={canvasVersion}
+        preloadedAvailableModels={availableModels}
+      />
     </>
   )
 }

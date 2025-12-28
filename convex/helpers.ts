@@ -49,10 +49,7 @@ export async function scaffoldNewCanvas(
     userId,
   })
 
-  await ctx.db.insert("entityUpdates", {
-    canvasId,
-    updatedTime: Date.now(),
-  })
+  await upsertCanvasUpdatedTime(ctx, canvasId)
 
   const versionId = await ctx.db.insert("canvasVersions", {
     canvasId,
@@ -124,6 +121,31 @@ export async function getCanvasesByFolderIdWithUpdatedTime(
   })
 
   return sortedCanvases
+}
+
+/**
+ * Updates the updatedTime for a canvas in the entityUpdates table.
+ * This is used to track when a canvas has been materially updated.
+ * Acts as an upsert: creates the record if it doesn't exist, updates it if it does.
+ */
+export async function upsertCanvasUpdatedTime(
+  ctx: MutationCtx,
+  canvasId: Id<"canvases">,
+) {
+  const entityUpdate = await ctx.db
+    .query("entityUpdates")
+    .withIndex("canvasId", (q) => q.eq("canvasId", canvasId))
+    .unique()
+  if (entityUpdate) {
+    await ctx.db.patch(entityUpdate._id, {
+      updatedTime: Date.now(),
+    })
+  } else {
+    await ctx.db.insert("entityUpdates", {
+      canvasId,
+      updatedTime: Date.now(),
+    })
+  }
 }
 
 // Delete a canvas and all of its related data (versions, evals, entityUpdates)

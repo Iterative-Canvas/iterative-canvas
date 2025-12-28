@@ -1,6 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
+import { usePreloadedQuery } from "convex/react"
+import { Preloaded } from "convex/react"
 import { cn } from "@/lib/utils"
 import { Card, CardContent } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
@@ -34,7 +36,12 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import ModelCombobox from "@/components/ai-elements/model-combobox"
-import { Id } from "@/convex/_generated/dataModel"
+import { Doc } from "@/convex/_generated/dataModel"
+import { api } from "@/convex/_generated/api"
+
+type EvalsContentProps = {
+  preloadedAvailableModels?: Preloaded<typeof api.public.getAvailableModels>
+}
 
 type Requirement = {
   id: number
@@ -42,7 +49,7 @@ type Requirement = {
   weight: number
   type: "pass-fail" | "subjective"
   threshold: number
-  model: string
+  model: string | undefined // Model ID (from aiGatewayModels._id)
   required: boolean
   fitToContent: boolean
   loading: boolean
@@ -129,7 +136,9 @@ const ResultIndicator = ({
   )
 }
 
-export function EvalsContent() {
+export function EvalsContent({
+  preloadedAvailableModels,
+}: EvalsContentProps) {
   const [requirements, setRequirements] = useState<Requirement[]>([])
   const [successThreshold, setSuccessThreshold] = useState(0.8)
   const [isRunAllLoading, setIsRunAllLoading] = useState(false)
@@ -140,6 +149,20 @@ export function EvalsContent() {
     score: null,
     reasoning: null,
   })
+
+  // Get available models from preloaded query - also reactive
+  const availableModels = preloadedAvailableModels
+    ? usePreloadedQuery(preloadedAvailableModels)
+    : []
+
+  // Create a map of models by ID for fast lookup
+  const modelsById = useMemo(() => {
+    const map = new Map<string, Doc<"aiGatewayModels">>()
+    for (const model of availableModels) {
+      map.set(model._id, model)
+    }
+    return map
+  }, [availableModels])
 
   const handleRequirementChange = <K extends keyof Requirement>(
     id: number,
@@ -380,23 +403,15 @@ export function EvalsContent() {
                       )}
                       <div className="ml-auto flex items-center gap-1">
                         <ModelCombobox
-                          defaultValue={{
-                            _id: "asdfasdf" as Id<"aiGatewayModels">,
-                            modelId: "goofy/goober-1",
-                            name: "Goober 1",
-                            description: "A silly model for silly tasks",
-                            provider: "GoofyAI",
-                            input: 2048,
-                            output: 2048,
-                            isDeprecated: true,
-                            _creationTime: 0,
-                          }}
+                          value={req.model ? modelsById.get(req.model) : undefined}
                           onChange={(model) =>
-                            console.log({ onChangeModel: model })
+                            handleRequirementChange(
+                              req.id,
+                              "model",
+                              model?._id,
+                            )
                           }
-                          onValidityChange={(valid) =>
-                            console.log({ comboboxValidity: valid })
-                          }
+                          availableModels={availableModels}
                           className="h-6"
                         />
                         <Button
