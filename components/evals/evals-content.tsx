@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useMemo } from "react"
-import { usePreloadedQuery } from "convex/react"
+import { useState, useMemo, useEffect, useCallback, useRef } from "react"
+import { usePreloadedQuery, useQuery, useMutation } from "convex/react"
 import { Preloaded } from "convex/react"
 import { cn } from "@/lib/utils"
 import { Card, CardContent } from "@/components/ui/card"
@@ -36,20 +36,21 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import ModelCombobox from "@/components/ai-elements/model-combobox"
-import { Doc } from "@/convex/_generated/dataModel"
+import { Doc, Id } from "@/convex/_generated/dataModel"
 import { api } from "@/convex/_generated/api"
 
 type EvalsContentProps = {
+  preloadedCanvasVersion?: Preloaded<typeof api.public.getCanvasVersionById>
   preloadedAvailableModels?: Preloaded<typeof api.public.getAvailableModels>
 }
 
 type Requirement = {
-  id: number
+  id: Id<"evals">
   text: string
   weight: number
   type: "pass-fail" | "subjective"
   threshold: number
-  model: string | undefined // Model ID (from aiGatewayModels._id)
+  model: Id<"aiGatewayModels"> | undefined // Model ID (from aiGatewayModels._id)
   required: boolean
   fitToContent: boolean
   loading: boolean
@@ -137,10 +138,57 @@ const ResultIndicator = ({
 }
 
 export function EvalsContent({
+  preloadedCanvasVersion,
   preloadedAvailableModels,
 }: EvalsContentProps) {
-  const [requirements, setRequirements] = useState<Requirement[]>([])
-  const [successThreshold, setSuccessThreshold] = useState(0.8)
+  // Get canvas version data
+  const canvasVersion = preloadedCanvasVersion
+    ? usePreloadedQuery(preloadedCanvasVersion)
+    : null
+
+  const versionId = canvasVersion?._id
+  const serverSuccessThreshold = canvasVersion?.successThreshold ?? 0.8
+
+  // Get evals from backend
+  const evals = useQuery(
+    api.public.getEvalsByCanvasVersionId,
+    versionId ? { canvasVersionId: versionId } : "skip",
+  )
+
+  // Get available models from preloaded query - also reactive
+  const availableModels = preloadedAvailableModels
+    ? usePreloadedQuery(preloadedAvailableModels)
+    : []
+
+  // Mutations
+  const createEval = useMutation(api.public.createEval)
+  const updateEval = useMutation(api.public.updateEval)
+  const deleteEval = useMutation(api.public.deleteEval)
+  const updateSuccessThreshold = useMutation(
+    api.public.updateCanvasVersionSuccessThreshold,
+  )
+
+  // Local state for UI-only concerns
+  const [fitToContentMap, setFitToContentMap] = useState<
+    Map<Id<"evals">, boolean>
+  >(new Map())
+  const [loadingMap, setLoadingMap] = useState<Map<Id<"evals">, boolean>>(
+    new Map(),
+  )
+  const [resultMap, setResultMap] = useState<
+    Map<
+      Id<"evals">,
+      { result: "pass" | "fail" | null; score: number | null; reasoning: string | null }
+    >
+  >(new Map())
+  // Draft text for debounced updates
+  const [draftTextMap, setDraftTextMap] = useState<
+    Map<Id<"evals">, string>
+  >(new Map())
+  // Refs to track debounce timers
+  const debounceTimersRef = useRef<Map<Id<"evals">, NodeJS.Timeout>>(
+    new Map(),
+  )
   const [isRunAllLoading, setIsRunAllLoading] = useState(false)
   const [overallResult, setOverallResult] = useState<
     Pick<ResultIndicatorProps, "result" | "score" | "reasoning">
@@ -149,11 +197,6 @@ export function EvalsContent({
     score: null,
     reasoning: null,
   })
-
-  // Get available models from preloaded query - also reactive
-  const availableModels = preloadedAvailableModels
-    ? usePreloadedQuery(preloadedAvailableModels)
-    : []
 
   // Create a map of models by ID for fast lookup
   const modelsById = useMemo(() => {
@@ -164,23 +207,200 @@ export function EvalsContent({
     return map
   }, [availableModels])
 
-  const handleRequirementChange = <K extends keyof Requirement>(
-    id: number,
-    field: K,
-    value: Requirement[K],
-  ) => {
-    setRequirements((prev) =>
-      prev.map((req) => (req.id === id ? { ...req, [field]: value } : req)),
-    )
-  }
+  // Sync draft text with server text when it changes (similar to PromptInput)
+  // Only update draft if there's no active debounce timer and server text differs
+  useEffect(() => {
+    if (!evals) return
 
-  const toggleFitToContent = (id: number) => {
-    setRequirements((prev) =>
-      prev.map((req) =>
-        req.id === id ? { ...req, fitToContent: !req.fitToContent } : req,
-      ),
-    )
-  }
+    setDraftTextMap((prev) => {
+      const newMap = new Map(prev)
+      for (const evalRecord of evals) {
+        const serverText = evalRecord.eval ?? ""
+        const currentDraft = newMap.get(evalRecord._id)
+        const hasActiveDebounce = debounceTimersRef.current.has(evalRecord._id)
+
+        if (currentDraft === undefined) {
+          // No draft exists, initialize with server text
+          newMap.set(evalRecord._id, serverText)
+        } else if (!hasActiveDebounce && currentDraft !== serverText) {
+          // No active debounce and server text differs - server was updated from elsewhere
+          newMap.set(evalRecord._id, serverText)
+        }
+        // If hasActiveDebounce, keep the draft (user is typing)
+        // If currentDraft === serverText, keep the draft (they're in sync)
+      }
+      return newMap
+    })
+  }, [evals])
+
+  // Convert evals from backend to Requirement objects for rendering
+  const requirements = useMemo(() => {
+    if (!evals) return []
+
+    return evals.map((evalRecord) => {
+      const type: "pass-fail" | "subjective" =
+        evalRecord.type === "pass_fail" ? "pass-fail" : "subjective"
+      const resultData = resultMap.get(evalRecord._id) || {
+        result: null,
+        score: null,
+        reasoning: null,
+      }
+      // Use draft text if available, otherwise use server text
+      const text = draftTextMap.get(evalRecord._id) ?? evalRecord.eval ?? ""
+
+      return {
+        id: evalRecord._id,
+        text,
+        weight: evalRecord.weight,
+        type,
+        threshold: evalRecord.threshold ?? 0.5,
+        model: evalRecord.modelId,
+        required: evalRecord.isRequired,
+        fitToContent: fitToContentMap.get(evalRecord._id) ?? false,
+        loading: loadingMap.get(evalRecord._id) ?? false,
+        ...resultData,
+      }
+    })
+  }, [evals, fitToContentMap, loadingMap, resultMap, draftTextMap])
+
+  // Sync success threshold with server
+  const [successThreshold, setSuccessThreshold] = useState(serverSuccessThreshold)
+
+  useEffect(() => {
+    if (serverSuccessThreshold !== undefined) {
+      setSuccessThreshold(serverSuccessThreshold)
+    }
+  }, [serverSuccessThreshold])
+
+  // Debounced function to update text in backend
+  const debouncedUpdateText = useCallback(
+    (id: Id<"evals">, text: string) => {
+      // Clear existing timer for this eval
+      const existingTimer = debounceTimersRef.current.get(id)
+      if (existingTimer) {
+        clearTimeout(existingTimer)
+      }
+
+      // Set new timer
+      const timer = setTimeout(async () => {
+        debounceTimersRef.current.delete(id)
+        await updateEval({
+          evalId: id,
+          eval: text,
+        })
+      }, 500) // 500ms debounce delay
+
+      debounceTimersRef.current.set(id, timer)
+    },
+    [updateEval],
+  )
+
+  const handleRequirementChange = useCallback(
+    async <K extends keyof Requirement>(
+      id: Id<"evals">,
+      field: K,
+      value: Requirement[K],
+    ) => {
+      if (!versionId) return
+
+      // Handle text changes with debouncing
+      if (field === "text") {
+        const textValue = value as string
+        // Update draft immediately for responsive UI
+        setDraftTextMap((prev) => {
+          const newMap = new Map(prev)
+          newMap.set(id, textValue)
+          return newMap
+        })
+        // Debounce the backend update
+        debouncedUpdateText(id, textValue)
+      } else if (field === "weight") {
+        await updateEval({
+          evalId: id,
+          weight: value as number,
+        })
+      } else if (field === "type") {
+        const dbType = (value as string) === "pass-fail" ? "pass_fail" : "subjective"
+        await updateEval({
+          evalId: id,
+          type: dbType,
+        })
+      } else if (field === "threshold") {
+        await updateEval({
+          evalId: id,
+          threshold: value as number,
+        })
+      } else if (field === "model") {
+        await updateEval({
+          evalId: id,
+          modelId: value as Id<"aiGatewayModels"> | undefined,
+        })
+      } else if (field === "required") {
+        await updateEval({
+          evalId: id,
+          isRequired: value as boolean,
+        })
+      }
+    },
+    [versionId, updateEval, debouncedUpdateText],
+  )
+
+  // Cleanup debounce timers on unmount
+  useEffect(() => {
+    return () => {
+      for (const timer of debounceTimersRef.current.values()) {
+        clearTimeout(timer)
+      }
+      debounceTimersRef.current.clear()
+    }
+  }, [])
+
+  const toggleFitToContent = useCallback((id: Id<"evals">) => {
+    setFitToContentMap((prev) => {
+      const newMap = new Map(prev)
+      newMap.set(id, !(prev.get(id) ?? false))
+      return newMap
+    })
+  }, [])
+
+  const handleDeleteRequirement = useCallback(
+    async (id: Id<"evals">) => {
+      await deleteEval({ evalId: id })
+    },
+    [deleteEval],
+  )
+
+  const handleAddRequirement = useCallback(async () => {
+    if (!versionId) return
+
+    // Get default model from user preferences or app defaults
+    const defaultModelId = availableModels.find(
+      (m) => m.modelId === "openai/gpt-4o",
+    )?._id
+
+    await createEval({
+      versionId,
+      eval: "",
+      modelId: defaultModelId,
+      isRequired: true,
+      weight: 1,
+      type: "pass_fail",
+      threshold: undefined,
+    })
+  }, [versionId, createEval, availableModels])
+
+  const handleSuccessThresholdChange = useCallback(
+    async (value: number) => {
+      setSuccessThreshold(value)
+      if (versionId) {
+        await updateSuccessThreshold({
+          versionId,
+          successThreshold: value,
+        })
+      }
+    },
+    [versionId, updateSuccessThreshold],
+  )
 
   const runSingleRequirement = async (req: Requirement) => {
     let newResult: "pass" | "fail" = "fail"
@@ -206,61 +426,97 @@ export function EvalsContent({
     }
 
     return {
-      ...req,
-      loading: false,
       result: newResult,
       score: newScore,
       reasoning: newReasoning,
     }
   }
 
-  const handleRunRequirement = async (id: number) => {
-    setRequirements((prev) =>
-      prev.map((req) =>
-        req.id === id
-          ? {
-              ...req,
-              loading: true,
-              result: null,
-              score: null,
-              reasoning: null,
-            }
-          : req,
-      ),
-    )
+  const handleRunRequirement = async (id: Id<"evals">) => {
+    setLoadingMap((prev) => {
+      const newMap = new Map(prev)
+      newMap.set(id, true)
+      return newMap
+    })
+    setResultMap((prev) => {
+      const newMap = new Map(prev)
+      newMap.set(id, { result: null, score: null, reasoning: null })
+      return newMap
+    })
+
     await new Promise((resolve) => setTimeout(resolve, 1500))
     const reqToRun = requirements.find((r) => r.id === id)
     if (reqToRun) {
-      const updatedReq = await runSingleRequirement(reqToRun)
-      setRequirements((prev) => prev.map((r) => (r.id === id ? updatedReq : r)))
+      const result = await runSingleRequirement(reqToRun)
+      setLoadingMap((prev) => {
+        const newMap = new Map(prev)
+        newMap.set(id, false)
+        return newMap
+      })
+      setResultMap((prev) => {
+        const newMap = new Map(prev)
+        newMap.set(id, result)
+        return newMap
+      })
     }
   }
 
   const handleRunAll = async () => {
     setIsRunAllLoading(true)
     setOverallResult({ result: null, score: null, reasoning: null })
-    setRequirements((prev) =>
-      prev.map((req) => ({
-        ...req,
-        loading: true,
-        result: null,
-        score: null,
-        reasoning: null,
-      })),
-    )
 
-    const updatedRequirements = await Promise.all(
-      requirements.map((req) =>
-        new Promise((resolve) =>
-          setTimeout(resolve, 500 + Math.random() * 1000),
-        ).then(() => runSingleRequirement(req)),
+    // Set all requirements to loading
+    const loadingMapUpdate = new Map<Id<"evals">, boolean>()
+    const resultMapUpdate = new Map<
+      Id<"evals">,
+      { result: "pass" | "fail" | null; score: number | null; reasoning: string | null }
+    >()
+    requirements.forEach((req) => {
+      loadingMapUpdate.set(req.id, true)
+      resultMapUpdate.set(req.id, { result: null, score: null, reasoning: null })
+    })
+    setLoadingMap(loadingMapUpdate)
+    setResultMap(resultMapUpdate)
+
+    const updatedResults = await Promise.all(
+      requirements.map(
+        (req) =>
+          new Promise<{
+            id: Id<"evals">
+            result: Awaited<ReturnType<typeof runSingleRequirement>>
+          }>(async (resolve) => {
+            await new Promise((r) => setTimeout(r, 500 + Math.random() * 1000))
+            const result = await runSingleRequirement(req)
+            resolve({ id: req.id, result })
+          }),
       ),
     )
 
-    const validReqs = updatedRequirements.filter((r) => r.score !== null)
+    // Update results
+    const finalLoadingMap = new Map<Id<"evals">, boolean>()
+    const finalResultMap = new Map<
+      Id<"evals">,
+      { result: "pass" | "fail" | null; score: number | null; reasoning: string | null }
+    >()
+    updatedResults.forEach(({ id, result }) => {
+      finalLoadingMap.set(id, false)
+      finalResultMap.set(id, result)
+    })
+    setLoadingMap(finalLoadingMap)
+    setResultMap(finalResultMap)
+
+    // Calculate overall score
+    const validReqs: Array<Requirement & { score: number }> = []
+    for (const { id, result } of updatedResults) {
+      const req = requirements.find((r) => r.id === id)
+      if (req && result.score !== null) {
+        validReqs.push({ ...req, score: result.score })
+      }
+    }
+
     const totalWeight = validReqs.reduce((sum, req) => sum + req.weight, 0)
     const weightedSum = validReqs.reduce(
-      (sum, req) => sum + (req.score ?? 0) * req.weight,
+      (sum, req) => sum + req.score * req.weight,
       0,
     )
     const overallScore = totalWeight > 0 ? weightedSum / totalWeight : 0
@@ -270,7 +526,6 @@ export function EvalsContent({
       overallPass ? "above" : "below"
     } the success threshold of ${successThreshold}.`
 
-    setRequirements(updatedRequirements)
     setOverallResult({
       result: overallPass ? "pass" : "fail",
       score: overallScore,
@@ -291,6 +546,7 @@ export function EvalsContent({
                   size="icon"
                   variant="ghost"
                   className="h-6 w-6 mt-1 hover:text-red-500"
+                  onClick={() => handleDeleteRequirement(req.id)}
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -457,12 +713,12 @@ export function EvalsContent({
             step="0.1"
             value={successThreshold}
             onChange={(e) =>
-              setSuccessThreshold(Number.parseFloat(e.target.value))
+              handleSuccessThresholdChange(Number.parseFloat(e.target.value))
             }
             className="h-8 w-20"
           />
         </div>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" onClick={handleAddRequirement}>
           <Plus className="h-4 w-4 mr-2" />
           Add Requirement
         </Button>

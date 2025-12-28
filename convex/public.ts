@@ -41,6 +41,30 @@ export const getCanvasVersionById = query({
   },
 })
 
+export const getEvalsByCanvasVersionId = query({
+  args: { canvasVersionId: v.id("canvasVersions") },
+  handler: async (ctx, { canvasVersionId }) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+
+    const version = await ctx.db.get(canvasVersionId)
+    if (!version) throw new Error(`Canvas version ${canvasVersionId} not found`)
+
+    const canvas = await ctx.db.get(version.canvasId)
+    if (!canvas) throw new Error(`Canvas ${version.canvasId} not found`)
+    if (canvas.userId !== userId) throw new Error("Not authorized")
+
+    const evals = await ctx.db
+      .query("evals")
+      .withIndex("canvasVersionId", (q) =>
+        q.eq("canvasVersionId", canvasVersionId),
+      )
+      .collect()
+
+    return evals
+  },
+})
+
 /**
  * Returns an array of folder objects (root first, then alphabetical order).
  * Each folder object contains the canvases it owns, sorted by updatedTime desc.
@@ -382,6 +406,146 @@ export const updateCanvasVersionPrompt = mutation({
 
     await ctx.db.patch(versionId, { 
       prompt,
+      hasBeenEdited: true,
+    })
+
+    await upsertCanvasUpdatedTime(ctx, version.canvasId)
+  },
+})
+
+export const createEval = mutation({
+  args: {
+    versionId: v.id("canvasVersions"),
+    eval: v.optional(v.string()),
+    modelId: v.optional(v.id("aiGatewayModels")),
+    isRequired: v.boolean(),
+    weight: v.number(),
+    type: v.union(v.literal("pass_fail"), v.literal("subjective")),
+    threshold: v.optional(v.number()),
+  },
+  handler: async (ctx, { versionId, eval: evalText, modelId, isRequired, weight, type, threshold }) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+
+    const version = await ctx.db.get(versionId)
+    if (!version) throw new Error(`Canvas version ${versionId} not found`)
+
+    const canvas = await ctx.db.get(version.canvasId)
+    if (!canvas) throw new Error(`Canvas ${version.canvasId} not found`)
+    if (canvas.userId !== userId) throw new Error("Not authorized")
+
+    await ctx.db.insert("evals", {
+      canvasVersionId: versionId,
+      eval: evalText,
+      modelId,
+      isRequired,
+      weight,
+      type,
+      threshold,
+    })
+
+    await ctx.db.patch(versionId, {
+      hasBeenEdited: true,
+    })
+
+    await upsertCanvasUpdatedTime(ctx, version.canvasId)
+  },
+})
+
+export const updateEval = mutation({
+  args: {
+    evalId: v.id("evals"),
+    eval: v.optional(v.string()),
+    modelId: v.optional(v.id("aiGatewayModels")),
+    isRequired: v.optional(v.boolean()),
+    weight: v.optional(v.number()),
+    type: v.optional(v.union(v.literal("pass_fail"), v.literal("subjective"))),
+    threshold: v.optional(v.number()),
+  },
+  handler: async (ctx, { evalId, eval: evalText, modelId, isRequired, weight, type, threshold }) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+
+    const evalRecord = await ctx.db.get(evalId)
+    if (!evalRecord) throw new Error(`Eval ${evalId} not found`)
+
+    const version = await ctx.db.get(evalRecord.canvasVersionId)
+    if (!version) throw new Error(`Canvas version ${evalRecord.canvasVersionId} not found`)
+
+    const canvas = await ctx.db.get(version.canvasId)
+    if (!canvas) throw new Error(`Canvas ${version.canvasId} not found`)
+    if (canvas.userId !== userId) throw new Error("Not authorized")
+
+    const updateFields: {
+      eval?: string
+      modelId?: Id<"aiGatewayModels">
+      isRequired?: boolean
+      weight?: number
+      type?: "pass_fail" | "subjective"
+      threshold?: number
+    } = {}
+
+    if (evalText !== undefined) updateFields.eval = evalText
+    if (modelId !== undefined) updateFields.modelId = modelId
+    if (isRequired !== undefined) updateFields.isRequired = isRequired
+    if (weight !== undefined) updateFields.weight = weight
+    if (type !== undefined) updateFields.type = type
+    if (threshold !== undefined) updateFields.threshold = threshold
+
+    await ctx.db.patch(evalId, updateFields)
+
+    await ctx.db.patch(version._id, {
+      hasBeenEdited: true,
+    })
+
+    await upsertCanvasUpdatedTime(ctx, version.canvasId)
+  },
+})
+
+export const deleteEval = mutation({
+  args: { evalId: v.id("evals") },
+  handler: async (ctx, { evalId }) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+
+    const evalRecord = await ctx.db.get(evalId)
+    if (!evalRecord) throw new Error(`Eval ${evalId} not found`)
+
+    const version = await ctx.db.get(evalRecord.canvasVersionId)
+    if (!version) throw new Error(`Canvas version ${evalRecord.canvasVersionId} not found`)
+
+    const canvas = await ctx.db.get(version.canvasId)
+    if (!canvas) throw new Error(`Canvas ${version.canvasId} not found`)
+    if (canvas.userId !== userId) throw new Error("Not authorized")
+
+    await ctx.db.delete(evalId)
+
+    await ctx.db.patch(version._id, {
+      hasBeenEdited: true,
+    })
+
+    await upsertCanvasUpdatedTime(ctx, version.canvasId)
+  },
+})
+
+export const updateCanvasVersionSuccessThreshold = mutation({
+  args: {
+    versionId: v.id("canvasVersions"),
+    successThreshold: v.optional(v.number()),
+  },
+  handler: async (ctx, { versionId, successThreshold }) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+
+    const version = await ctx.db.get(versionId)
+    if (!version) throw new Error(`Canvas version ${versionId} not found`)
+
+    const canvas = await ctx.db.get(version.canvasId)
+    if (!canvas) throw new Error(`Canvas ${version.canvasId} not found`)
+    if (canvas.userId !== userId) throw new Error("Not authorized")
+
+    await ctx.db.patch(versionId, {
+      successThreshold,
       hasBeenEdited: true,
     })
 

@@ -8,6 +8,7 @@ type EvalsSectionProps = {
   onMaximize?: () => void
   onRestore?: () => void
   isMaximized?: boolean
+  preloadedCanvasVersion?: Preloaded<typeof api.public.getCanvasVersionById>
   preloadedAvailableModels?: Preloaded<typeof api.public.getAvailableModels>
 }
 
@@ -15,6 +16,7 @@ export function EvalsSection({
   onMaximize,
   onRestore,
   isMaximized,
+  preloadedCanvasVersion,
   preloadedAvailableModels,
 }: EvalsSectionProps) {
   return (
@@ -24,7 +26,10 @@ export function EvalsSection({
         onRestore={onRestore}
         isMaximized={isMaximized}
       />
-      <EvalsContent preloadedAvailableModels={preloadedAvailableModels} />
+      <EvalsContent
+        preloadedCanvasVersion={preloadedCanvasVersion}
+        preloadedAvailableModels={preloadedAvailableModels}
+      />
     </Card>
   )
 }

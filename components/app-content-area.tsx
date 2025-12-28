@@ -184,6 +184,7 @@ export function AppContentArea({
               onMaximize={maximizeEvalsPanel}
               onRestore={resetPanelsLayout}
               isMaximized={evalsMaximized}
+              preloadedCanvasVersion={preloadedCanvasVersion}
               preloadedAvailableModels={preloadedAvailableModels}
             />
           </Panel>
