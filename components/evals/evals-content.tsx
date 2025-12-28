@@ -207,31 +207,29 @@ export function EvalsContent({
     return map
   }, [availableModels])
 
-  // Sync draft text with server text when it changes (similar to PromptInput)
-  // Only update draft if there's no active debounce timer and server text differs
-  useEffect(() => {
-    if (!evals) return
+  // Helper function to derive eval text: use draft if user is typing, otherwise use server value
+  const getEvalText = useCallback(
+    (id: Id<"evals">) => {
+      const hasActiveDebounce = debounceTimersRef.current.has(id)
+      const draft = draftTextMap.get(id)
+      const evalRecord = evals?.find((e) => e._id === id)
+      const serverText = evalRecord?.eval ?? ""
 
-    setDraftTextMap((prev) => {
-      const newMap = new Map(prev)
-      for (const evalRecord of evals) {
-        const serverText = evalRecord.eval ?? ""
-        const currentDraft = newMap.get(evalRecord._id)
-        const hasActiveDebounce = debounceTimersRef.current.has(evalRecord._id)
-
-        if (currentDraft === undefined) {
-          // No draft exists, initialize with server text
-          newMap.set(evalRecord._id, serverText)
-        } else if (!hasActiveDebounce && currentDraft !== serverText) {
-          // No active debounce and server text differs - server was updated from elsewhere
-          newMap.set(evalRecord._id, serverText)
-        }
-        // If hasActiveDebounce, keep the draft (user is typing)
-        // If currentDraft === serverText, keep the draft (they're in sync)
+      // If user is actively typing (has active debounce), use draft
+      if (hasActiveDebounce && draft !== undefined) {
+        return draft
       }
-      return newMap
-    })
-  }, [evals])
+
+      // If draft exists and matches server, use draft (they're in sync)
+      if (draft !== undefined && draft === serverText) {
+        return draft
+      }
+
+      // Otherwise, use server value (will initialize draft lazily when user types)
+      return serverText
+    },
+    [evals, draftTextMap],
+  )
 
   // Convert evals from backend to Requirement objects for rendering
   const requirements = useMemo(() => {
@@ -245,8 +243,8 @@ export function EvalsContent({
         score: null,
         reasoning: null,
       }
-      // Use draft text if available, otherwise use server text
-      const text = draftTextMap.get(evalRecord._id) ?? evalRecord.eval ?? ""
+      // Derive text using helper function
+      const text = getEvalText(evalRecord._id)
 
       return {
         id: evalRecord._id,
@@ -261,7 +259,7 @@ export function EvalsContent({
         ...resultData,
       }
     })
-  }, [evals, fitToContentMap, loadingMap, resultMap, draftTextMap])
+  }, [evals, fitToContentMap, loadingMap, resultMap, getEvalText])
 
   // Sync success threshold with server
   const [successThreshold, setSuccessThreshold] = useState(serverSuccessThreshold)

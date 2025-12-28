@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useState, useEffect } from "react"
+import { useCallback, useState } from "react"
 import { cn } from "@/lib/utils"
 import { Response } from "@/components/ai-elements/response"
 import {
@@ -46,21 +46,9 @@ export function PromptInput({ preloadedCanvasVersion, className }: Props) {
   const prompt = canvasVersion?.prompt
   const versionId = canvasVersion?._id
 
-  const [content, setContent] = useState(
-    prompt ?? DEFAULT_PROMPT,
-  )
-  const [draft, setDraft] = useState(content)
+  const [draft, setDraft] = useState(prompt ?? DEFAULT_PROMPT)
   const [isEditing, setIsEditing] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-
-  // Update content when prompt changes (e.g., when preloaded data arrives)
-  useEffect(() => {
-    if (prompt !== undefined && !isEditing) {
-      const newContent = prompt ?? DEFAULT_PROMPT
-      setContent(newContent)
-      setDraft(newContent)
-    }
-  }, [prompt, isEditing])
 
   const updatePrompt = useMutation(api.public.updateCanvasVersionPrompt)
 
@@ -88,7 +76,6 @@ export function PromptInput({ preloadedCanvasVersion, className }: Props) {
     if (!isEditing) return
     setIsSubmitting(true)
     try {
-      setContent(draft)
       await submitToBackend(draft, false)
       setIsEditing(false)
     } finally {
@@ -100,7 +87,6 @@ export function PromptInput({ preloadedCanvasVersion, className }: Props) {
     if (!isEditing) return
     setIsSubmitting(true)
     try {
-      setContent(draft)
       await submitToBackend(draft, true)
       setIsEditing(false)
     } finally {
@@ -129,7 +115,7 @@ export function PromptInput({ preloadedCanvasVersion, className }: Props) {
             />
           ) : (
             <div className="p-4">
-              <Response>{content}</Response>
+              <Response>{prompt ?? DEFAULT_PROMPT}</Response>
             </div>
           )}
         </div>
@@ -161,7 +147,7 @@ export function PromptInput({ preloadedCanvasVersion, className }: Props) {
             {!isEditing ? (
               <PromptInputButton
                 onClick={() => {
-                  setDraft(content)
+                  setDraft(prompt ?? DEFAULT_PROMPT)
                   setIsEditing(true)
                 }}
                 aria-label="Edit"
@@ -172,7 +158,6 @@ export function PromptInput({ preloadedCanvasVersion, className }: Props) {
               <>
                 <PromptInputButton
                   onClick={() => {
-                    setDraft(content)
                     setIsEditing(false)
                   }}
                   disabled={isSubmitting}
