@@ -29,7 +29,7 @@ import { usePreloadedQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { Preloaded } from "convex/react"
 
-const DEFAULT_PROMPT = "### Hello!\n\nWrite your prompt here. Use **markdown** for rich text."
+const DEFAULT_PROMPT = "Write your **prompt** here. Use _markdown_ for rich text."
 
 type Props = {
   preloadedCanvasVersion?: Preloaded<typeof api.public.getCanvasVersionById>

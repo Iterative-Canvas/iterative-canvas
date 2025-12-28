@@ -33,7 +33,7 @@ export function CanvasContent({
 }: CanvasContentProps) {
   const [content, setContent] = useState(
     initialMarkdown ??
-      "### Your canvas will appear here\n\nUse the Prompt to generate content, or edit directly.",
+      "Submit a prompt to generate the **canvas**. You may also edit the canvas directly.",
   )
   const [draft, setDraft] = useState(content)
   const [isEditing, setIsEditing] = useState(false)
