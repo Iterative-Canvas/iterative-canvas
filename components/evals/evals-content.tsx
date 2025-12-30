@@ -178,17 +178,19 @@ export function EvalsContent({
   const [resultMap, setResultMap] = useState<
     Map<
       Id<"evals">,
-      { result: "pass" | "fail" | null; score: number | null; reasoning: string | null }
+      {
+        result: "pass" | "fail" | null
+        score: number | null
+        reasoning: string | null
+      }
     >
   >(new Map())
   // Draft text for debounced updates
-  const [draftTextMap, setDraftTextMap] = useState<
-    Map<Id<"evals">, string>
-  >(new Map())
-  // Refs to track debounce timers
-  const debounceTimersRef = useRef<Map<Id<"evals">, NodeJS.Timeout>>(
+  const [draftTextMap, setDraftTextMap] = useState<Map<Id<"evals">, string>>(
     new Map(),
   )
+  // Refs to track debounce timers
+  const debounceTimersRef = useRef<Map<Id<"evals">, NodeJS.Timeout>>(new Map())
   const [isRunAllLoading, setIsRunAllLoading] = useState(false)
   const [overallResult, setOverallResult] = useState<
     Pick<ResultIndicatorProps, "result" | "score" | "reasoning">
@@ -262,7 +264,9 @@ export function EvalsContent({
   }, [evals, fitToContentMap, loadingMap, resultMap, getEvalText])
 
   // Sync success threshold with server
-  const [successThreshold, setSuccessThreshold] = useState(serverSuccessThreshold)
+  const [successThreshold, setSuccessThreshold] = useState(
+    serverSuccessThreshold,
+  )
 
   useEffect(() => {
     if (serverSuccessThreshold !== undefined) {
@@ -318,7 +322,8 @@ export function EvalsContent({
           weight: value as number,
         })
       } else if (field === "type") {
-        const dbType = (value as string) === "pass-fail" ? "pass_fail" : "subjective"
+        const dbType =
+          (value as string) === "pass-fail" ? "pass_fail" : "subjective"
         await updateEval({
           evalId: id,
           type: dbType,
@@ -467,11 +472,19 @@ export function EvalsContent({
     const loadingMapUpdate = new Map<Id<"evals">, boolean>()
     const resultMapUpdate = new Map<
       Id<"evals">,
-      { result: "pass" | "fail" | null; score: number | null; reasoning: string | null }
+      {
+        result: "pass" | "fail" | null
+        score: number | null
+        reasoning: string | null
+      }
     >()
     requirements.forEach((req) => {
       loadingMapUpdate.set(req.id, true)
-      resultMapUpdate.set(req.id, { result: null, score: null, reasoning: null })
+      resultMapUpdate.set(req.id, {
+        result: null,
+        score: null,
+        reasoning: null,
+      })
     })
     setLoadingMap(loadingMapUpdate)
     setResultMap(resultMapUpdate)
@@ -494,7 +507,11 @@ export function EvalsContent({
     const finalLoadingMap = new Map<Id<"evals">, boolean>()
     const finalResultMap = new Map<
       Id<"evals">,
-      { result: "pass" | "fail" | null; score: number | null; reasoning: string | null }
+      {
+        result: "pass" | "fail" | null
+        score: number | null
+        reasoning: string | null
+      }
     >()
     updatedResults.forEach(({ id, result }) => {
       finalLoadingMap.set(id, false)
@@ -657,13 +674,11 @@ export function EvalsContent({
                       )}
                       <div className="ml-auto flex items-center gap-1">
                         <ModelCombobox
-                          value={req.model ? modelsById.get(req.model) : undefined}
+                          value={
+                            req.model ? modelsById.get(req.model) : undefined
+                          }
                           onChange={(model) =>
-                            handleRequirementChange(
-                              req.id,
-                              "model",
-                              model?._id,
-                            )
+                            handleRequirementChange(req.id, "model", model?._id)
                           }
                           availableModels={availableModels}
                           className="h-6"

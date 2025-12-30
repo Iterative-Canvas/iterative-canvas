@@ -1,4 +1,3 @@
-
 # Stopping Streams
 
 Cancelling ongoing streams is often needed.
@@ -13,11 +12,11 @@ You would use this if you want to cancel a stream from the server side to the LL
 forwarding the `abortSignal` from the request.
 
 ```tsx highlight="10,11,12-16"
-import { streamText } from 'ai';
-__PROVIDER_IMPORT__;
+import { streamText } from "ai"
+__PROVIDER_IMPORT__
 
 export async function POST(req: Request) {
-  const { prompt } = await req.json();
+  const { prompt } = await req.json()
 
   const result = streamText({
     model: __MODEL__,
@@ -26,12 +25,12 @@ export async function POST(req: Request) {
     abortSignal: req.signal,
     onAbort: ({ steps }) => {
       // Handle cleanup when stream is aborted
-      console.log('Stream aborted after', steps.length, 'steps');
+      console.log("Stream aborted after", steps.length, "steps")
       // Persist partial results to database
     },
-  });
+  })
 
-  return result.toTextStreamResponse();
+  return result.toTextStreamResponse()
 }
 ```
 
@@ -48,17 +47,17 @@ This will cancel the stream from the client side to the server.
 </Note>
 
 ```tsx file="app/page.tsx" highlight="9,18-20"
-'use client';
+"use client"
 
-import { useCompletion } from '@ai-sdk/react';
+import { useCompletion } from "@ai-sdk/react"
 
 export default function Chat() {
   const { input, completion, stop, status, handleSubmit, handleInputChange } =
-    useCompletion();
+    useCompletion()
 
   return (
     <div>
-      {(status === 'submitted' || status === 'streaming') && (
+      {(status === "submitted" || status === "streaming") && (
         <button type="button" onClick={() => stop()}>
           Stop
         </button>
@@ -68,7 +67,7 @@ export default function Chat() {
         <input value={input} onChange={handleInputChange} />
       </form>
     </div>
-  );
+  )
 }
 ```
 
@@ -86,23 +85,23 @@ Unlike `onFinish`, which is called when a stream completes normally, `onAbort` i
 </Note>
 
 ```tsx highlight="8-12"
-import { streamText } from 'ai';
-__PROVIDER_IMPORT__;
+import { streamText } from "ai"
+__PROVIDER_IMPORT__
 
 const result = streamText({
   model: __MODEL__,
-  prompt: 'Write a long story...',
+  prompt: "Write a long story...",
   abortSignal: controller.signal,
   onAbort: ({ steps }) => {
     // Called when stream is aborted - persist partial results
-    await savePartialResults(steps);
-    await logAbortEvent(steps.length);
+    await savePartialResults(steps)
+    await logAbortEvent(steps.length)
   },
   onFinish: ({ steps, totalUsage }) => {
     // Called when stream completes normally
-    await saveFinalResults(steps, totalUsage);
+    await saveFinalResults(steps, totalUsage)
   },
-});
+})
 ```
 
 The `onAbort` callback receives:
@@ -121,13 +120,13 @@ You can also handle abort events directly in the stream using the `abort` stream
 ```tsx highlight="8-12"
 for await (const part of result.fullStream) {
   switch (part.type) {
-    case 'text-delta':
+    case "text-delta":
       // Handle text delta content
-      break;
-    case 'abort':
+      break
+    case "abort":
       // Handle abort event directly in stream
-      console.log('Stream was aborted');
-      break;
+      console.log("Stream was aborted")
+      break
     // ... other cases
   }
 }
@@ -138,36 +137,36 @@ for await (const part of result.fullStream) {
 When using `toUIMessageStreamResponse`, you need to handle stream abortion slightly differently. The `onFinish` callback receives an `isAborted` parameter, and you should pass the `consumeStream` function to ensure proper abort handling:
 
 ```tsx highlight="5,19,20-24,26"
-import { openai } from '@ai-sdk/openai';
+import { openai } from "@ai-sdk/openai"
 import {
   consumeStream,
   convertToModelMessages,
   streamText,
   UIMessage,
-} from 'ai';
-__PROVIDER_IMPORT__;
+} from "ai"
+__PROVIDER_IMPORT__
 
 export async function POST(req: Request) {
-  const { messages }: { messages: UIMessage[] } = await req.json();
+  const { messages }: { messages: UIMessage[] } = await req.json()
 
   const result = streamText({
     model: __MODEL__,
     messages: await convertToModelMessages(messages),
     abortSignal: req.signal,
-  });
+  })
 
   return result.toUIMessageStreamResponse({
     onFinish: async ({ isAborted }) => {
       if (isAborted) {
-        console.log('Stream was aborted');
+        console.log("Stream was aborted")
         // Handle abort-specific cleanup
       } else {
-        console.log('Stream completed normally');
+        console.log("Stream completed normally")
         // Handle normal completion
       }
     },
     consumeSseStream: consumeStream,
-  });
+  })
 }
 ```
 

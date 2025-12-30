@@ -1,4 +1,3 @@
-
 # Prompts
 
 Prompts are instructions that you give a [large language model (LLM)](/docs/foundations/overview#large-language-models) to tell it what to do.
@@ -21,8 +20,8 @@ You can structure the text in any way and inject variables, e.g. using a templat
 ```ts highlight="3"
 const result = await generateText({
   model: __MODEL__,
-  prompt: 'Invent a new holiday and describe its traditions.',
-});
+  prompt: "Invent a new holiday and describe its traditions.",
+})
 ```
 
 You can also use template literals to provide dynamic data to your prompt.
@@ -33,7 +32,7 @@ const result = await generateText({
   prompt:
     `I am planning a trip to ${destination} for ${lengthOfStay} days. ` +
     `Please suggest the best tourist activities for me to do.`,
-});
+})
 ```
 
 ## System Prompts
@@ -52,7 +51,7 @@ const result = await generateText({
   prompt:
     `I am planning a trip to ${destination} for ${lengthOfStay} days. ` +
     `Please suggest the best tourist activities for me to do.`,
-});
+})
 ```
 
 <Note>
@@ -72,11 +71,11 @@ Each message has a `role` and a `content` property. The content can either be te
 const result = await generateText({
   model: __MODEL__,
   messages: [
-    { role: 'user', content: 'Hi!' },
-    { role: 'assistant', content: 'Hello, how can I help?' },
-    { role: 'user', content: 'Where can I buy the best Currywurst in Berlin?' },
+    { role: "user", content: "Hi!" },
+    { role: "assistant", content: "Hello, how can I help?" },
+    { role: "user", content: "Where can I buy the best Currywurst in Berlin?" },
   ],
-});
+})
 ```
 
 Instead of sending a text in the `content` property, you can send an array of parts that includes a mix of text and other content parts.
@@ -100,13 +99,13 @@ Adding provider options at the function call level should be used when you do no
 
 ```ts
 const { text } = await generateText({
-  model: azure('your-deployment-name'),
+  model: azure("your-deployment-name"),
   providerOptions: {
     openai: {
-      reasoningEffort: 'low',
+      reasoningEffort: "low",
     },
   },
-});
+})
 ```
 
 #### Message Level
@@ -114,18 +113,18 @@ const { text } = await generateText({
 For granular control over applying provider options at the message level, you can pass `providerOptions` to the message object:
 
 ```ts
-import { ModelMessage } from 'ai';
+import { ModelMessage } from "ai"
 
 const messages: ModelMessage[] = [
   {
-    role: 'system',
-    content: 'Cached system message',
+    role: "system",
+    content: "Cached system message",
     providerOptions: {
       // Sets a cache control breakpoint on the system message
-      anthropic: { cacheControl: { type: 'ephemeral' } },
+      anthropic: { cacheControl: { type: "ephemeral" } },
     },
   },
-];
+]
 ```
 
 #### Message Part Level
@@ -133,31 +132,31 @@ const messages: ModelMessage[] = [
 Certain provider-specific options require configuration at the message part level:
 
 ```ts
-import { ModelMessage } from 'ai';
+import { ModelMessage } from "ai"
 
 const messages: ModelMessage[] = [
   {
-    role: 'user',
+    role: "user",
     content: [
       {
-        type: 'text',
-        text: 'Describe the image in detail.',
+        type: "text",
+        text: "Describe the image in detail.",
         providerOptions: {
-          openai: { imageDetail: 'low' },
+          openai: { imageDetail: "low" },
         },
       },
       {
-        type: 'image',
+        type: "image",
         image:
-          'https://github.com/vercel/ai/blob/main/examples/ai-core/data/comic-cat.png?raw=true',
+          "https://github.com/vercel/ai/blob/main/examples/ai-core/data/comic-cat.png?raw=true",
         // Sets image detail configuration for image part:
         providerOptions: {
-          openai: { imageDetail: 'low' },
+          openai: { imageDetail: "low" },
         },
       },
     ],
   },
-];
+]
 ```
 
 <Note type="warning">
@@ -184,16 +183,16 @@ const result = await generateText({
   model: __MODEL__,
   messages: [
     {
-      role: 'user',
+      role: "user",
       content: [
         {
-          type: 'text',
-          text: 'Where can I buy the best Currywurst in Berlin?',
+          type: "text",
+          text: "Where can I buy the best Currywurst in Berlin?",
         },
       ],
     },
   ],
-});
+})
 ```
 
 #### Image Parts
@@ -218,17 +217,17 @@ const result = await generateText({
   model,
   messages: [
     {
-      role: 'user',
+      role: "user",
       content: [
-        { type: 'text', text: 'Describe the image in detail.' },
+        { type: "text", text: "Describe the image in detail." },
         {
-          type: 'image',
-          image: fs.readFileSync('./data/comic-cat.png'),
+          type: "image",
+          image: fs.readFileSync("./data/comic-cat.png"),
         },
       ],
     },
   ],
-});
+})
 ```
 
 ##### Example: Base-64 encoded image (string)
@@ -238,17 +237,17 @@ const result = await generateText({
   model: __MODEL__,
   messages: [
     {
-      role: 'user',
+      role: "user",
       content: [
-        { type: 'text', text: 'Describe the image in detail.' },
+        { type: "text", text: "Describe the image in detail." },
         {
-          type: 'image',
-          image: fs.readFileSync('./data/comic-cat.png').toString('base64'),
+          type: "image",
+          image: fs.readFileSync("./data/comic-cat.png").toString("base64"),
         },
       ],
     },
   ],
-});
+})
 ```
 
 ##### Example: Image URL (string)
@@ -258,18 +257,18 @@ const result = await generateText({
   model: __MODEL__,
   messages: [
     {
-      role: 'user',
+      role: "user",
       content: [
-        { type: 'text', text: 'Describe the image in detail.' },
+        { type: "text", text: "Describe the image in detail." },
         {
-          type: 'image',
+          type: "image",
           image:
-            'https://github.com/vercel/ai/blob/main/examples/ai-core/data/comic-cat.png?raw=true',
+            "https://github.com/vercel/ai/blob/main/examples/ai-core/data/comic-cat.png?raw=true",
         },
       ],
     },
   ],
-});
+})
 ```
 
 #### File Parts
@@ -301,50 +300,50 @@ You need to specify the MIME type of the file you are sending.
 ##### Example: PDF file from Buffer
 
 ```ts highlight="12-15"
-import { google } from '@ai-sdk/google';
-import { generateText } from 'ai';
+import { google } from "@ai-sdk/google"
+import { generateText } from "ai"
 
 const result = await generateText({
-  model: google('gemini-1.5-flash'),
+  model: google("gemini-1.5-flash"),
   messages: [
     {
-      role: 'user',
+      role: "user",
       content: [
-        { type: 'text', text: 'What is the file about?' },
+        { type: "text", text: "What is the file about?" },
         {
-          type: 'file',
-          mediaType: 'application/pdf',
-          data: fs.readFileSync('./data/example.pdf'),
-          filename: 'example.pdf', // optional, not used by all providers
+          type: "file",
+          mediaType: "application/pdf",
+          data: fs.readFileSync("./data/example.pdf"),
+          filename: "example.pdf", // optional, not used by all providers
         },
       ],
     },
   ],
-});
+})
 ```
 
 ##### Example: mp3 audio file from Buffer
 
 ```ts highlight="12-14"
-import { openai } from '@ai-sdk/openai';
-import { generateText } from 'ai';
+import { openai } from "@ai-sdk/openai"
+import { generateText } from "ai"
 
 const result = await generateText({
-  model: openai('gpt-4o-audio-preview'),
+  model: openai("gpt-4o-audio-preview"),
   messages: [
     {
-      role: 'user',
+      role: "user",
       content: [
-        { type: 'text', text: 'What is the audio saying?' },
+        { type: "text", text: "What is the audio saying?" },
         {
-          type: 'file',
-          mediaType: 'audio/mpeg',
-          data: fs.readFileSync('./data/galileo.mp3'),
+          type: "file",
+          mediaType: "audio/mpeg",
+          data: fs.readFileSync("./data/galileo.mp3"),
         },
       ],
     },
   ],
-});
+})
 ```
 
 #### Custom Download Function (Experimental)
@@ -360,30 +359,30 @@ const result = await generateText({
   model: __MODEL__,
   experimental_download: async (
     requestedDownloads: Array<{
-      url: URL;
-      isUrlSupportedByModel: boolean;
+      url: URL
+      isUrlSupportedByModel: boolean
     }>,
   ): PromiseLike<
     Array<{
-      data: Uint8Array;
-      mediaType: string | undefined;
+      data: Uint8Array
+      mediaType: string | undefined
     } | null>
   > => {
     // ... download the files and return an array with similar order
   },
   messages: [
     {
-      role: 'user',
+      role: "user",
       content: [
         {
-          type: 'file',
-          data: new URL('https://api.company.com/private/document.pdf'),
-          mediaType: 'application/pdf',
+          type: "file",
+          data: new URL("https://api.company.com/private/document.pdf"),
+          mediaType: "application/pdf",
         },
       ],
     },
   ],
-});
+})
 ```
 
 <Note>
@@ -403,10 +402,10 @@ and can contain text, reasoning, and tool call parts.
 const result = await generateText({
   model: __MODEL__,
   messages: [
-    { role: 'user', content: 'Hi!' },
-    { role: 'assistant', content: 'Hello, how can I help?' },
+    { role: "user", content: "Hi!" },
+    { role: "assistant", content: "Hello, how can I help?" },
   ],
-});
+})
 ```
 
 #### Example: Assistant message with text content in array
@@ -415,13 +414,13 @@ const result = await generateText({
 const result = await generateText({
   model: __MODEL__,
   messages: [
-    { role: 'user', content: 'Hi!' },
+    { role: "user", content: "Hi!" },
     {
-      role: 'assistant',
-      content: [{ type: 'text', text: 'Hello, how can I help?' }],
+      role: "assistant",
+      content: [{ type: "text", text: "Hello, how can I help?" }],
     },
   ],
-});
+})
 ```
 
 #### Example: Assistant message with tool call content
@@ -430,20 +429,20 @@ const result = await generateText({
 const result = await generateText({
   model: __MODEL__,
   messages: [
-    { role: 'user', content: 'How many calories are in this block of cheese?' },
+    { role: "user", content: "How many calories are in this block of cheese?" },
     {
-      role: 'assistant',
+      role: "assistant",
       content: [
         {
-          type: 'tool-call',
-          toolCallId: '12345',
-          toolName: 'get-nutrition-data',
-          input: { cheese: 'Roquefort' },
+          type: "tool-call",
+          toolCallId: "12345",
+          toolName: "get-nutrition-data",
+          input: { cheese: "Roquefort" },
         },
       ],
     },
   ],
-});
+})
 ```
 
 #### Example: Assistant message with file content
@@ -457,19 +456,19 @@ const result = await generateText({
 const result = await generateText({
   model: __MODEL__,
   messages: [
-    { role: 'user', content: 'Generate an image of a roquefort cheese!' },
+    { role: "user", content: "Generate an image of a roquefort cheese!" },
     {
-      role: 'assistant',
+      role: "assistant",
       content: [
         {
-          type: 'file',
-          mediaType: 'image/png',
-          data: fs.readFileSync('./data/roquefort.jpg'),
+          type: "file",
+          mediaType: "image/png",
+          data: fs.readFileSync("./data/roquefort.jpg"),
         },
       ],
     },
   ],
-});
+})
 ```
 
 ### Tool messages
@@ -489,38 +488,38 @@ const result = await generateText({
   model: __MODEL__,
   messages: [
     {
-      role: 'user',
+      role: "user",
       content: [
         {
-          type: 'text',
-          text: 'How many calories are in this block of cheese?',
+          type: "text",
+          text: "How many calories are in this block of cheese?",
         },
-        { type: 'image', image: fs.readFileSync('./data/roquefort.jpg') },
+        { type: "image", image: fs.readFileSync("./data/roquefort.jpg") },
       ],
     },
     {
-      role: 'assistant',
+      role: "assistant",
       content: [
         {
-          type: 'tool-call',
-          toolCallId: '12345',
-          toolName: 'get-nutrition-data',
-          input: { cheese: 'Roquefort' },
+          type: "tool-call",
+          toolCallId: "12345",
+          toolName: "get-nutrition-data",
+          input: { cheese: "Roquefort" },
         },
         // there could be more tool calls here (parallel calling)
       ],
     },
     {
-      role: 'tool',
+      role: "tool",
       content: [
         {
-          type: 'tool-result',
-          toolCallId: '12345', // needs to match the tool call id
-          toolName: 'get-nutrition-data',
+          type: "tool-result",
+          toolCallId: "12345", // needs to match the tool call id
+          toolName: "get-nutrition-data",
           output: {
-            type: 'json',
+            type: "json",
             value: {
-              name: 'Cheese, roquefort',
+              name: "Cheese, roquefort",
               calories: 369,
               fat: 31,
               protein: 22,
@@ -531,7 +530,7 @@ const result = await generateText({
       ],
     },
   ],
-});
+})
 ```
 
 #### Multi-modal Tool Results
@@ -549,18 +548,18 @@ const result = await generateText({
   messages: [
     // ...
     {
-      role: 'tool',
+      role: "tool",
       content: [
         {
-          type: 'tool-result',
-          toolCallId: '12345', // needs to match the tool call id
-          toolName: 'get-nutrition-data',
+          type: "tool-result",
+          toolCallId: "12345", // needs to match the tool call id
+          toolName: "get-nutrition-data",
           // for models that do not support multi-part tool results,
           // you can include a regular output part:
           output: {
-            type: 'json',
+            type: "json",
             value: {
-              name: 'Cheese, roquefort',
+              name: "Cheese, roquefort",
               calories: 369,
               fat: 31,
               protein: 22,
@@ -568,24 +567,24 @@ const result = await generateText({
           },
         },
         {
-          type: 'tool-result',
-          toolCallId: '12345', // needs to match the tool call id
-          toolName: 'get-nutrition-data',
+          type: "tool-result",
+          toolCallId: "12345", // needs to match the tool call id
+          toolName: "get-nutrition-data",
           // for models that support multi-part tool results,
           // you can include a multi-part content part:
           output: {
-            type: 'content',
+            type: "content",
             value: [
               {
-                type: 'text',
-                text: 'Here is an image of the nutrition data for the cheese:',
+                type: "text",
+                text: "Here is an image of the nutrition data for the cheese:",
               },
               {
-                type: 'media',
+                type: "media",
                 data: fs
-                  .readFileSync('./data/roquefort-nutrition-data.png')
-                  .toString('base64'),
-                mediaType: 'image/png',
+                  .readFileSync("./data/roquefort-nutrition-data.png")
+                  .toString("base64"),
+                mediaType: "image/png",
               },
             ],
           },
@@ -593,7 +592,7 @@ const result = await generateText({
       ],
     },
   ],
-});
+})
 ```
 
 ### System Messages
@@ -605,12 +604,12 @@ You can alternatively use the `system` property.
 const result = await generateText({
   model: __MODEL__,
   messages: [
-    { role: 'system', content: 'You help planning travel itineraries.' },
+    { role: "system", content: "You help planning travel itineraries." },
     {
-      role: 'user',
+      role: "user",
       content:
-        'I am planning a trip to Berlin for 3 days. Please suggest the best tourist activities for me to do.',
+        "I am planning a trip to Berlin for 3 days. Please suggest the best tourist activities for me to do.",
     },
   ],
-});
+})
 ```

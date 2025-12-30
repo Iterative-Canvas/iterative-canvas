@@ -1,4 +1,3 @@
-
 # Error Handling
 
 ## Handling regular errors
@@ -6,14 +5,14 @@
 Regular errors are thrown and can be handled using the `try/catch` block.
 
 ```ts highlight="3,8-10"
-import { generateText } from 'ai';
-__PROVIDER_IMPORT__;
+import { generateText } from "ai"
+__PROVIDER_IMPORT__
 
 try {
   const { text } = await generateText({
     model: __MODEL__,
-    prompt: 'Write a vegetarian lasagna recipe for 4 people.',
-  });
+    prompt: "Write a vegetarian lasagna recipe for 4 people.",
+  })
 } catch (error) {
   // handle error
 }
@@ -28,17 +27,17 @@ the error is thrown as a regular error.
 You can handle these errors using the `try/catch` block.
 
 ```ts highlight="3,12-14"
-import { streamText } from 'ai';
-__PROVIDER_IMPORT__;
+import { streamText } from "ai"
+__PROVIDER_IMPORT__
 
 try {
   const { textStream } = streamText({
     model: __MODEL__,
-    prompt: 'Write a vegetarian lasagna recipe for 4 people.',
-  });
+    prompt: "Write a vegetarian lasagna recipe for 4 people.",
+  })
 
   for await (const textPart of textStream) {
-    process.stdout.write(textPart);
+    process.stdout.write(textPart)
   }
 } catch (error) {
   // handle error
@@ -53,34 +52,34 @@ It is recommended to also add a try-catch block for errors that
 happen outside of the streaming.
 
 ```ts highlight="13-21"
-import { streamText } from 'ai';
-__PROVIDER_IMPORT__;
+import { streamText } from "ai"
+__PROVIDER_IMPORT__
 
 try {
   const { fullStream } = streamText({
     model: __MODEL__,
-    prompt: 'Write a vegetarian lasagna recipe for 4 people.',
-  });
+    prompt: "Write a vegetarian lasagna recipe for 4 people.",
+  })
 
   for await (const part of fullStream) {
     switch (part.type) {
       // ... handle other part types
 
-      case 'error': {
-        const error = part.error;
+      case "error": {
+        const error = part.error
         // handle error
-        break;
+        break
       }
 
-      case 'abort': {
+      case "abort": {
         // handle stream abort
-        break;
+        break
       }
 
-      case 'tool-error': {
-        const error = part.error;
+      case "tool-error": {
+        const error = part.error
         // handle error
-        break;
+        break
       }
     }
   }
@@ -96,24 +95,24 @@ When streams are aborted (e.g., via chat stop button), you may want to perform c
 The `onAbort` callback is called when a stream is aborted via `AbortSignal`, but `onFinish` is not called. This ensures you can still update your UI state appropriately.
 
 ```ts highlight="5-9"
-import { streamText } from 'ai';
-__PROVIDER_IMPORT__;
+import { streamText } from "ai"
+__PROVIDER_IMPORT__
 
 const { textStream } = streamText({
   model: __MODEL__,
-  prompt: 'Write a vegetarian lasagna recipe for 4 people.',
+  prompt: "Write a vegetarian lasagna recipe for 4 people.",
   onAbort: ({ steps }) => {
     // Update stored messages or perform cleanup
-    console.log('Stream aborted after', steps.length, 'steps');
+    console.log("Stream aborted after", steps.length, "steps")
   },
   onFinish: ({ steps, totalUsage }) => {
     // This is called on normal completion
-    console.log('Stream completed normally');
+    console.log("Stream completed normally")
   },
-});
+})
 
 for await (const textPart of textStream) {
-  process.stdout.write(textPart);
+  process.stdout.write(textPart)
 }
 ```
 
@@ -124,20 +123,20 @@ The `onAbort` callback receives:
 You can also handle abort events directly in the stream:
 
 ```ts highlight="10-13"
-import { streamText } from 'ai';
-__PROVIDER_IMPORT__;
+import { streamText } from "ai"
+__PROVIDER_IMPORT__
 
 const { fullStream } = streamText({
   model: __MODEL__,
-  prompt: 'Write a vegetarian lasagna recipe for 4 people.',
-});
+  prompt: "Write a vegetarian lasagna recipe for 4 people.",
+})
 
 for await (const chunk of fullStream) {
   switch (chunk.type) {
-    case 'abort': {
+    case "abort": {
       // Handle abort directly in stream
-      console.log('Stream was aborted');
-      break;
+      console.log("Stream was aborted")
+      break
     }
     // ... handle other part types
   }

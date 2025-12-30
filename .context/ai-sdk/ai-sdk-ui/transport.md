@@ -1,4 +1,3 @@
-
 # Transport
 
 The `useChat` transport system provides fine-grained control over how messages are sent to your API endpoints and how responses are processed. This is particularly useful for alternative communication protocols like WebSockets, custom authentication patterns, or specialized backend integrations.
@@ -8,23 +7,23 @@ The `useChat` transport system provides fine-grained control over how messages a
 By default, `useChat` uses HTTP POST requests to send messages to `/api/chat`:
 
 ```tsx
-import { useChat } from '@ai-sdk/react';
+import { useChat } from "@ai-sdk/react"
 
 // Uses default HTTP transport
-const { messages, sendMessage } = useChat();
+const { messages, sendMessage } = useChat()
 ```
 
 This is equivalent to:
 
 ```tsx
-import { useChat } from '@ai-sdk/react';
-import { DefaultChatTransport } from 'ai';
+import { useChat } from "@ai-sdk/react"
+import { DefaultChatTransport } from "ai"
 
 const { messages, sendMessage } = useChat({
   transport: new DefaultChatTransport({
-    api: '/api/chat',
+    api: "/api/chat",
   }),
-});
+})
 ```
 
 ## Custom Transport Configuration
@@ -32,19 +31,19 @@ const { messages, sendMessage } = useChat({
 Configure the default transport with custom options:
 
 ```tsx
-import { useChat } from '@ai-sdk/react';
-import { DefaultChatTransport } from 'ai';
+import { useChat } from "@ai-sdk/react"
+import { DefaultChatTransport } from "ai"
 
 const { messages, sendMessage } = useChat({
   transport: new DefaultChatTransport({
-    api: '/api/custom-chat',
+    api: "/api/custom-chat",
     headers: {
-      Authorization: 'Bearer your-token',
-      'X-API-Version': '2024-01',
+      Authorization: "Bearer your-token",
+      "X-API-Version": "2024-01",
     },
-    credentials: 'include',
+    credentials: "include",
   }),
-});
+})
 ```
 
 ### Dynamic Configuration
@@ -54,18 +53,18 @@ You can also provide functions that return configuration values. This is useful 
 ```tsx
 const { messages, sendMessage } = useChat({
   transport: new DefaultChatTransport({
-    api: '/api/chat',
+    api: "/api/chat",
     headers: () => ({
       Authorization: `Bearer ${getAuthToken()}`,
-      'X-User-ID': getCurrentUserId(),
+      "X-User-ID": getCurrentUserId(),
     }),
     body: () => ({
       sessionId: getCurrentSessionId(),
       preferences: getUserPreferences(),
     }),
-    credentials: () => 'include',
+    credentials: () => "include",
   }),
-});
+})
 ```
 
 ### Request Transformation
@@ -75,21 +74,21 @@ Transform requests before sending to your API:
 ```tsx
 const { messages, sendMessage } = useChat({
   transport: new DefaultChatTransport({
-    api: '/api/chat',
+    api: "/api/chat",
     prepareSendMessagesRequest: ({ id, messages, trigger, messageId }) => {
       return {
         headers: {
-          'X-Session-ID': id,
+          "X-Session-ID": id,
         },
         body: {
           messages: messages.slice(-10), // Only send last 10 messages
           trigger,
           messageId,
         },
-      };
+      }
     },
   }),
-});
+})
 ```
 
 ## Building Custom Transports

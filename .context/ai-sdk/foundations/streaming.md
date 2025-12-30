@@ -1,4 +1,3 @@
-
 # Streaming
 
 Streaming conversational text UIs (like ChatGPT) have gained massive popularity over the past few months. This section explores the benefits and drawbacks of streaming and blocking interfaces.
@@ -42,16 +41,16 @@ While streaming interfaces can greatly enhance user experiences, especially with
 However, regardless of the speed of your model, the AI SDK is designed to make implementing streaming UIs as simple as possible. In the example below, we stream text generation from OpenAI's `gpt-4.1` in under 10 lines of code using the SDK's [`streamText`](/docs/reference/ai-sdk-core/stream-text) function:
 
 ```ts
-import { streamText } from 'ai';
-__PROVIDER_IMPORT__;
+import { streamText } from "ai"
+__PROVIDER_IMPORT__
 
 const { textStream } = streamText({
   model: __MODEL__,
-  prompt: 'Write a poem about embedding models.',
-});
+  prompt: "Write a poem about embedding models.",
+})
 
 for await (const textPart of textStream) {
-  console.log(textPart);
+  console.log(textPart)
 }
 ```
 

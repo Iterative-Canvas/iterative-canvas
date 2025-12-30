@@ -1,4 +1,3 @@
-
 # AI SDK UI
 
 AI SDK UI is designed to help you build interactive chat, completion, and assistant applications with ease. It is a **framework-agnostic toolkit**, streamlining the integration of advanced AI functionalities into your applications.

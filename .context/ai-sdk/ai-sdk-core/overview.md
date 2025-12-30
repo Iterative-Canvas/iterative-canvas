@@ -1,4 +1,3 @@
-
 # AI SDK Core
 
 Large Language Models (LLMs) are advanced programs that can understand, create, and engage with human language on a large scale.

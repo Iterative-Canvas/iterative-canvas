@@ -51,7 +51,9 @@ export function PromptHeader({
   }, [canvasVersion?.promptModelId, availableModels])
 
   // Mutation to update the prompt model
-  const updatePromptModel = useMutation(api.public.updateCanvasVersionPromptModel)
+  const updatePromptModel = useMutation(
+    api.public.updateCanvasVersionPromptModel,
+  )
 
   const handleModelChange = async (
     model: Doc<"aiGatewayModels"> | undefined,

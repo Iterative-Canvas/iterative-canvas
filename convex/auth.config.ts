@@ -5,6 +5,6 @@ const authConfig = {
       applicationID: "convex",
     },
   ],
-};
+}
 
-export default authConfig;
+export default authConfig

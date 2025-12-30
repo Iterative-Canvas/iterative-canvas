@@ -374,7 +374,7 @@ export const updateCanvasVersionPromptModel = mutation({
     if (!canvas) throw new Error(`Canvas ${version.canvasId} not found`)
     if (canvas.userId !== userId) throw new Error("Not authorized")
 
-    await ctx.db.patch(versionId, { 
+    await ctx.db.patch(versionId, {
       promptModelId,
       hasBeenEdited: true,
     })
@@ -404,7 +404,7 @@ export const updateCanvasVersionPrompt = mutation({
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const _skipEvals = skipEvals
 
-    await ctx.db.patch(versionId, { 
+    await ctx.db.patch(versionId, {
       prompt,
       hasBeenEdited: true,
     })
@@ -423,7 +423,10 @@ export const createEval = mutation({
     type: v.union(v.literal("pass_fail"), v.literal("subjective")),
     threshold: v.optional(v.number()),
   },
-  handler: async (ctx, { versionId, eval: evalText, modelId, isRequired, weight, type, threshold }) => {
+  handler: async (
+    ctx,
+    { versionId, eval: evalText, modelId, isRequired, weight, type, threshold },
+  ) => {
     const userId = await getAuthUserId(ctx)
     if (!userId) throw new Error("Not authenticated")
 
@@ -462,7 +465,10 @@ export const updateEval = mutation({
     type: v.optional(v.union(v.literal("pass_fail"), v.literal("subjective"))),
     threshold: v.optional(v.number()),
   },
-  handler: async (ctx, { evalId, eval: evalText, modelId, isRequired, weight, type, threshold }) => {
+  handler: async (
+    ctx,
+    { evalId, eval: evalText, modelId, isRequired, weight, type, threshold },
+  ) => {
     const userId = await getAuthUserId(ctx)
     if (!userId) throw new Error("Not authenticated")
 
@@ -470,7 +476,8 @@ export const updateEval = mutation({
     if (!evalRecord) throw new Error(`Eval ${evalId} not found`)
 
     const version = await ctx.db.get(evalRecord.canvasVersionId)
-    if (!version) throw new Error(`Canvas version ${evalRecord.canvasVersionId} not found`)
+    if (!version)
+      throw new Error(`Canvas version ${evalRecord.canvasVersionId} not found`)
 
     const canvas = await ctx.db.get(version.canvasId)
     if (!canvas) throw new Error(`Canvas ${version.canvasId} not found`)
@@ -512,7 +519,8 @@ export const deleteEval = mutation({
     if (!evalRecord) throw new Error(`Eval ${evalId} not found`)
 
     const version = await ctx.db.get(evalRecord.canvasVersionId)
-    if (!version) throw new Error(`Canvas version ${evalRecord.canvasVersionId} not found`)
+    if (!version)
+      throw new Error(`Canvas version ${evalRecord.canvasVersionId} not found`)
 
     const canvas = await ctx.db.get(version.canvasId)
     if (!canvas) throw new Error(`Canvas ${version.canvasId} not found`)
