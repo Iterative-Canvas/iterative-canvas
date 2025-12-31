@@ -202,6 +202,7 @@ export function AppContentArea({
           onMaximize={maximizeCanvasPanel}
           onRestore={resetPanelsLayout}
           isMaximized={canvasMaximized}
+          preloadedCanvasVersion={preloadedCanvasVersion}
         />
       </Panel>
     </PanelGroup>

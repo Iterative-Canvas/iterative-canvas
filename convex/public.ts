@@ -560,3 +560,28 @@ export const updateCanvasVersionSuccessThreshold = mutation({
     await upsertCanvasUpdatedTime(ctx, version.canvasId)
   },
 })
+
+export const updateCanvasVersionResponse = mutation({
+  args: {
+    versionId: v.id("canvasVersions"),
+    response: v.optional(v.string()),
+  },
+  handler: async (ctx, { versionId, response }) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+
+    const version = await ctx.db.get(versionId)
+    if (!version) throw new Error(`Canvas version ${versionId} not found`)
+
+    const canvas = await ctx.db.get(version.canvasId)
+    if (!canvas) throw new Error(`Canvas ${version.canvasId} not found`)
+    if (canvas.userId !== userId) throw new Error("Not authorized")
+
+    await ctx.db.patch(versionId, {
+      response,
+      hasBeenEdited: true,
+    })
+
+    await upsertCanvasUpdatedTime(ctx, version.canvasId)
+  },
+})

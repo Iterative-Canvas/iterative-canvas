@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useState } from "react"
+import { useCallback, useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { Response } from "@/components/ai-elements/response"
 import {
@@ -19,44 +19,75 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { RefreshCw, PencilIcon, XIcon, CheckIcon } from "lucide-react"
+import { usePreloadedQuery, useMutation } from "convex/react"
+import { Preloaded } from "convex/react"
+import { api } from "@/convex/_generated/api"
+
+const PLACEHOLDER_TEXT =
+  "Submit a prompt to generate the **canvas**. You may also edit the canvas directly."
 
 export type CanvasContentProps = {
-  initialMarkdown?: string
   className?: string
   onSave?: (text: string) => Promise<void> | void
+  preloadedCanvasVersion?: Preloaded<typeof api.public.getCanvasVersionById>
 }
 
 export function CanvasContent({
-  initialMarkdown,
   className,
   onSave,
+  preloadedCanvasVersion,
 }: CanvasContentProps) {
-  const [content, setContent] = useState(
-    initialMarkdown ??
-      "Submit a prompt to generate the **canvas**. You may also edit the canvas directly.",
-  )
+  const canvasVersion = preloadedCanvasVersion
+    ? usePreloadedQuery(preloadedCanvasVersion)
+    : null
+
+  const response = canvasVersion?.response
+  const hasResponse = response && response.trim().length > 0
+  const displayContent = hasResponse ? response : PLACEHOLDER_TEXT
+
+  const versionId = canvasVersion?._id
+
+  const [content, setContent] = useState(displayContent)
   const [draft, setDraft] = useState(content)
   const [isEditing, setIsEditing] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const mockPersist = useCallback(async (text: string) => {
-    // Simulate a backend call
-    await new Promise((r) => setTimeout(r, 400))
-    console.log("mockPersistCanvas", { text })
-  }, [])
+  const updateResponse = useMutation(api.public.updateCanvasVersionResponse)
 
-  const handleSubmit = async (e?: React.FormEvent<HTMLFormElement>) => {
-    if (e) e.preventDefault()
-    if (!isEditing) return
-    setIsSubmitting(true)
-    try {
-      setContent(draft)
-      await (onSave ? onSave(draft) : mockPersist(draft))
-      setIsEditing(false)
-    } finally {
-      setIsSubmitting(false)
+  // Update content when response changes from the database
+  useEffect(() => {
+    if (!isEditing) {
+      setContent(displayContent)
+      setDraft(displayContent)
     }
-  }
+  }, [displayContent, isEditing])
+
+  const handleSubmit = useCallback(
+    async (e?: React.FormEvent<HTMLFormElement>) => {
+      if (e) e.preventDefault()
+      if (!isEditing) return
+      if (!versionId) {
+        console.warn("Cannot submit response: versionId is missing")
+        return
+      }
+
+      setIsSubmitting(true)
+      try {
+        const responseText = draft.trim() || undefined
+        await updateResponse({
+          versionId,
+          response: responseText,
+        })
+        setContent(draft)
+        setIsEditing(false)
+      } catch (error) {
+        console.error("Failed to update canvas response:", error)
+      } finally {
+        setIsSubmitting(false)
+      }
+    },
+    [isEditing, draft, versionId, updateResponse],
+  )
 
   return (
     <CardContent className="flex-1 min-h-0">
@@ -116,7 +147,7 @@ export function CanvasContent({
             {!isEditing ? (
               <PromptInputButton
                 onClick={() => {
-                  setDraft(content)
+                  setDraft(displayContent)
                   setIsEditing(true)
                 }}
                 aria-label="Edit"
@@ -127,7 +158,7 @@ export function CanvasContent({
               <>
                 <PromptInputButton
                   onClick={() => {
-                    setDraft(content) // discard edits
+                    setDraft(displayContent) // discard edits and reset to current database value
                     setIsEditing(false)
                   }}
                   disabled={isSubmitting}
