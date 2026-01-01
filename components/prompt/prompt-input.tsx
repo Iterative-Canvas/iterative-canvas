@@ -54,14 +54,14 @@ export function PromptInput({ preloadedCanvasVersion, className }: Props) {
   const updatePrompt = useMutation(api.public.updateCanvasVersionPrompt)
 
   const submitToBackend = useCallback(
-    async (text: string, skipEvals: boolean = false) => {
+    async (prompt: string, skipEvals: boolean = false) => {
       if (!versionId) {
         console.warn("Cannot submit prompt: versionId is missing")
         return
       }
       await updatePrompt({
         versionId,
-        prompt: text,
+        prompt,
         skipEvals,
       })
     },
