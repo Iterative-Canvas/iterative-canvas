@@ -61,7 +61,7 @@ export function PromptInput({ preloadedCanvasVersion, className }: Props) {
       }
       await updatePrompt({
         versionId,
-        prompt: text || undefined,
+        prompt: text,
         skipEvals,
       })
     },
