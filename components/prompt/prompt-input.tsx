@@ -181,9 +181,9 @@ export function PromptInput({ preloadedCanvasVersion, className }: Props) {
                   <Button
                     type="button"
                     onClick={handleSubmitWithSkipEvals}
-                    aria-label="Run Without Evaluating Requirements"
+                    aria-label="Submit Without Running Evals"
                   >
-                    Run Without Evaluating Requirements
+                    Submit Without Running Evals
                   </Button>
                 </SplitButton>
               </>

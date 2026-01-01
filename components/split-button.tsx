@@ -24,7 +24,7 @@ import { ChevronDown, Loader2 } from "lucide-react"
  *
  * <SplitButton tooltipText="You can't run right now" disabled={isDisabled} loading={isLoading}>
  *   <Button onClick={onRun}>Run</Button>
- *   <Button onClick={onRunWithoutEval}>Run Without Evaluating Requirements</Button>
+ *   <Button onClick={onRunWithoutEval}>Submit Without Running Evals</Button>
  *   <Button onClick={onSomethingElse}>Something else</Button>
  * </SplitButton>
  *
@@ -33,7 +33,7 @@ import { ChevronDown, Loader2 } from "lucide-react"
  * <SplitButton
  *   items=[
  *     { label: "Run", onClick: onRun },
- *     { label: "Run Without Evaluating Requirements", onClick: onRunWithoutEval },
+ *     { label: "Submit Without Running Evals", onClick: onRunWithoutEval },
  *   ]
  * />
  *
