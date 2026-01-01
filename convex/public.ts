@@ -565,8 +565,9 @@ export const updateCanvasVersionResponse = mutation({
   args: {
     versionId: v.id("canvasVersions"),
     response: v.optional(v.string()),
+    skip: v.optional(v.literal("evals")),
   },
-  handler: async (ctx, { versionId, response }) => {
+  handler: async (ctx, { versionId, response, skip }) => {
     const userId = await getAuthUserId(ctx)
     if (!userId) throw new Error("Not authenticated")
 
@@ -576,6 +577,10 @@ export const updateCanvasVersionResponse = mutation({
     const canvas = await ctx.db.get(version.canvasId)
     if (!canvas) throw new Error(`Canvas ${version.canvasId} not found`)
     if (canvas.userId !== userId) throw new Error("Not authorized")
+
+    // skip is accepted but not used yet
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const _skip = skip
 
     await ctx.db.patch(versionId, {
       response,

@@ -9,7 +9,6 @@ import {
   PromptInputToolbar,
   PromptInputTools,
   PromptInputButton,
-  PromptInputSubmit,
 } from "@/components/ai-elements/prompt-input"
 import { CardContent } from "@/components/ui/card"
 import {
@@ -18,6 +17,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Button } from "@/components/ui/button"
+import { SplitButton } from "@/components/split-button"
 import { RefreshCw, PencilIcon, XIcon, CheckIcon } from "lucide-react"
 import { usePreloadedQuery, useMutation } from "convex/react"
 import { Preloaded } from "convex/react"
@@ -28,13 +29,11 @@ const PLACEHOLDER_TEXT =
 
 export type CanvasContentProps = {
   className?: string
-  onSave?: (text: string) => Promise<void> | void
   preloadedCanvasVersion?: Preloaded<typeof api.public.getCanvasVersionById>
 }
 
 export function CanvasContent({
   className,
-  onSave,
   preloadedCanvasVersion,
 }: CanvasContentProps) {
   const canvasVersion = preloadedCanvasVersion
@@ -62,22 +61,33 @@ export function CanvasContent({
     }
   }, [displayContent, isEditing])
 
-  const handleSubmit = useCallback(
-    async (e?: React.FormEvent<HTMLFormElement>) => {
-      if (e) e.preventDefault()
-      if (!isEditing) return
+  const submitToBackend = useCallback(
+    async (response: string, skip?: "evals") => {
       if (!versionId) {
         console.warn("Cannot submit response: versionId is missing")
         return
       }
+      const responseText = response.trim() || undefined
+      await updateResponse({
+        versionId,
+        response: responseText,
+        skip,
+      })
+    },
+    [versionId, updateResponse],
+  )
+
+  const handleSubmit = useCallback(
+    async (
+      e?: React.FormEvent<HTMLFormElement> | React.MouseEvent,
+      skip?: "evals",
+    ) => {
+      if (e && "preventDefault" in e) e.preventDefault()
+      if (!isEditing) return
 
       setIsSubmitting(true)
       try {
-        const responseText = draft.trim() || undefined
-        await updateResponse({
-          versionId,
-          response: responseText,
-        })
+        await submitToBackend(draft, skip)
         setContent(draft)
         setIsEditing(false)
       } catch (error) {
@@ -86,13 +96,20 @@ export function CanvasContent({
         setIsSubmitting(false)
       }
     },
-    [isEditing, draft, versionId, updateResponse],
+    [isEditing, draft, submitToBackend],
+  )
+
+  const handleSubmitWithSkipEvals = useCallback(
+    async (e?: React.FormEvent<HTMLFormElement> | React.MouseEvent) => {
+      await handleSubmit(e, "evals")
+    },
+    [handleSubmit],
   )
 
   return (
     <CardContent className="flex-1 min-h-0">
       <AIPromptInput
-        onSubmit={handleSubmit}
+        onSubmit={(e) => handleSubmit(e, undefined)}
         className={cn(
           "size-full min-w-[26rem] min-h-[15rem] flex flex-col",
           className,
@@ -166,9 +183,26 @@ export function CanvasContent({
                 >
                   <XIcon size={16} />
                 </PromptInputButton>
-                <PromptInputSubmit disabled={isSubmitting} aria-label="Save">
-                  <CheckIcon size={16} />
-                </PromptInputSubmit>
+                <SplitButton
+                  disabled={!draft || isSubmitting}
+                  loading={isSubmitting}
+                  tooltipText="Please enter content to save."
+                >
+                  <Button
+                    type="button"
+                    onClick={(e) => handleSubmit(e, undefined)}
+                    aria-label="Save"
+                  >
+                    <CheckIcon size={16} />
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleSubmitWithSkipEvals}
+                    aria-label="Save Canvas Without Running Evals"
+                  >
+                    Save Canvas Without Running Evals
+                  </Button>
+                </SplitButton>
               </>
             )}
           </div>
