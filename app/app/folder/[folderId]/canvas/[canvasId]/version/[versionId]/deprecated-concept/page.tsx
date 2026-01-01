@@ -304,9 +304,7 @@ const RefinePopover = () => {
               {/* Primary action */}
               <Button onClick={() => {}}>Run</Button>
               {/* Secondary action */}
-              <Button onClick={() => {}}>
-                Submit Without Running Evals
-              </Button>
+              <Button onClick={() => {}}>Submit Without Running Evals</Button>
             </SplitButton>
           </div>
         </div>

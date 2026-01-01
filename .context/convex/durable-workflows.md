@@ -23,10 +23,10 @@ Welcome to the world of Convex workflows.
 - Clean up workflows after they're done.
 
 ```ts
-import { WorkflowManager } from "@convex-dev/workflow";
-import { components } from "./_generated/api";
+import { WorkflowManager } from "@convex-dev/workflow"
+import { components } from "./_generated/api"
 
-export const workflow = new WorkflowManager(components.workflow);
+export const workflow = new WorkflowManager(components.workflow)
 
 export const userOnboarding = workflow.define({
   args: {
@@ -36,23 +36,23 @@ export const userOnboarding = workflow.define({
     const status = await ctx.runMutation(
       internal.emails.sendVerificationEmail,
       { storageId: args.storageId },
-    );
+    )
 
     if (status === "needsVerification") {
       // Waits until verification is completed asynchronously.
-      await ctx.awaitEvent({ name: "verificationEmail" });
+      await ctx.awaitEvent({ name: "verificationEmail" })
     }
     const result = await ctx.runAction(
       internal.llm.generateCustomContent,
       { userId: args.userId },
       // Retry this on transient errors with the default retry policy.
       { retry: true },
-    );
+    )
     if (result.needsHumanInput) {
       // Run a whole workflow as a single step.
       await ctx.runWorkflow(internal.llm.refineContentWorkflow, {
         userId: args.userId,
-      });
+      })
     }
 
     await ctx.runMutation(
@@ -60,9 +60,9 @@ export const userOnboarding = workflow.define({
       { userId: args.userId },
       // Runs one day after the previous step.
       { runAfter: 24 * 60 * 60 * 1000 },
-    );
+    )
   },
-});
+})
 ```
 
 This component adds durably executed _workflows_ to Convex. Combine Convex
@@ -84,12 +84,12 @@ Then, install the component within your `convex/convex.config.ts` file:
 
 ```ts
 // convex/convex.config.ts
-import workflow from "@convex-dev/workflow/convex.config.js";
-import { defineApp } from "convex/server";
+import workflow from "@convex-dev/workflow/convex.config.js"
+import { defineApp } from "convex/server"
 
-const app = defineApp();
-app.use(workflow);
-export default app;
+const app = defineApp()
+app.use(workflow)
+export default app
 ```
 
 Finally, create a workflow manager within your `convex/` folder, and point it to
@@ -97,10 +97,10 @@ the installed component:
 
 ```ts
 // convex/index.ts
-import { WorkflowManager } from "@convex-dev/workflow";
-import { components } from "./_generated/api";
+import { WorkflowManager } from "@convex-dev/workflow"
+import { components } from "./_generated/api"
 
-export const workflow = new WorkflowManager(components.workflow);
+export const workflow = new WorkflowManager(components.workflow)
 ```
 
 ## Usage
@@ -123,31 +123,28 @@ export const exampleWorkflow = workflow.define({
   returns: v.string(),
   handler: async (step, args): Promise<string> => {
     //                         ^ Specify the return type of the handler
-    const queryResult = await step.runQuery(
-      internal.example.exampleQuery,
-      args,
-    );
+    const queryResult = await step.runQuery(internal.example.exampleQuery, args)
     const actionResult = await step.runAction(
       internal.example.exampleAction,
       { queryResult }, // pass in results from previous steps!
-    );
-    return actionResult;
+    )
+    return actionResult
   },
-});
+})
 
 export const exampleQuery = internalQuery({
   args: { name: v.string() },
   handler: async (ctx, args) => {
-    return `The query says... Hi ${args.name}!`;
+    return `The query says... Hi ${args.name}!`
   },
-});
+})
 
 export const exampleAction = internalAction({
   args: { queryResult: v.string() },
   handler: async (ctx, args) => {
-    return args.queryResult + " The action says... Hi back!";
+    return args.queryResult + " The action says... Hi back!"
   },
-});
+})
 ```
 
 ### Starting a workflow
@@ -162,9 +159,9 @@ export const kickoffWorkflow = mutation({
       ctx,
       internal.example.exampleWorkflow,
       { name: "James" },
-    );
+    )
   },
-});
+})
 ```
 
 ### Handling the workflow's result with onComplete
@@ -183,12 +180,12 @@ error instead of success. You can also do validation in the `onComplete` handler
 to have more control over handling that situation.
 
 ```ts
-import { vWorkflowId } from "@convex-dev/workflow";
-import { vResultValidator } from "@convex-dev/workpool";
+import { vWorkflowId } from "@convex-dev/workflow"
+import { vResultValidator } from "@convex-dev/workpool"
 
 export const foo = mutation({
   handler: async (ctx) => {
-    const name = "James";
+    const name = "James"
     const workflowId = await workflow.start(
       ctx,
       internal.example.exampleWorkflow,
@@ -197,9 +194,9 @@ export const foo = mutation({
         onComplete: internal.example.handleOnComplete,
         context: name, // can be anything
       },
-    );
+    )
   },
-});
+})
 
 export const handleOnComplete = mutation({
   args: {
@@ -208,17 +205,17 @@ export const handleOnComplete = mutation({
     context: v.any(), // used to pass through data from the start site.
   },
   handler: async (ctx, args) => {
-    const name = (args.context as { name: string }).name;
+    const name = (args.context as { name: string }).name
     if (args.result.kind === "success") {
-      const text = args.result.returnValue;
-      console.log(`${name} result: ${text}`);
+      const text = args.result.returnValue
+      console.log(`${name} result: ${text}`)
     } else if (args.result.kind === "error") {
-      console.error("Workflow failed", args.result.error);
+      console.error("Workflow failed", args.result.error)
     } else if (args.result.kind === "canceled") {
-      console.log("Workflow canceled", args.context);
+      console.log("Workflow canceled", args.context)
     }
   },
-});
+})
 ```
 
 ### Running steps in parallel
@@ -233,9 +230,9 @@ export const exampleWorkflow = workflow.define({
     const [result1, result2] = await Promise.all([
       step.runAction(internal.example.myAction, args),
       step.runAction(internal.example.myAction, args),
-    ]);
+    ])
   },
-});
+})
 ```
 
 Note: The workflow will not proceed until all steps fired off at once have
@@ -319,7 +316,7 @@ const workflow = new WorkflowManager(components.workflow, {
     // in convex.config.ts.
     maxParallelism: 10,
   },
-});
+})
 ```
 
 ### Checking a workflow's status
@@ -334,13 +331,13 @@ export const kickoffWorkflow = action({
       ctx,
       internal.example.exampleWorkflow,
       { name: "James" },
-    );
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    )
+    await new Promise((resolve) => setTimeout(resolve, 1000))
 
-    const status = await workflow.status(ctx, workflowId);
-    console.log("Workflow status after 1s", status);
+    const status = await workflow.status(ctx, workflowId)
+    console.log("Workflow status after 1s", status)
   },
-});
+})
 ```
 
 ### Canceling a workflow
@@ -356,13 +353,13 @@ export const kickoffWorkflow = action({
       ctx,
       internal.example.exampleWorkflow,
       { name: "James" },
-    );
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    )
+    await new Promise((resolve) => setTimeout(resolve, 1000))
 
     // Cancel the workflow after 1 second.
-    await workflow.cancel(ctx, workflowId);
+    await workflow.cancel(ctx, workflowId)
   },
-});
+})
 ```
 
 ### Cleaning up a workflow
@@ -378,22 +375,22 @@ export const kickoffWorkflow = action({
       ctx,
       internal.example.exampleWorkflow,
       { name: "James" },
-    );
+    )
     try {
       while (true) {
-        const status = await workflow.status(ctx, workflowId);
+        const status = await workflow.status(ctx, workflowId)
         if (status.type === "inProgress") {
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-          continue;
+          await new Promise((resolve) => setTimeout(resolve, 1000))
+          continue
         }
-        console.log("Workflow completed with status:", status);
-        break;
+        console.log("Workflow completed with status:", status)
+        break
       }
     } finally {
-      await workflow.cleanup(ctx, workflowId);
+      await workflow.cleanup(ctx, workflowId)
     }
   },
-});
+})
 ```
 
 ### Specifying a custom name for a step
@@ -407,9 +404,9 @@ it uses the `file/folder:function` name.
 export const exampleWorkflow = workflow.define({
   args: { name: v.string() },
   handler: async (step, args): Promise<void> => {
-    await step.runAction(internal.example.myAction, args, { name: "FOO" });
+    await step.runAction(internal.example.myAction, args, { name: "FOO" })
   },
-});
+})
 ```
 
 ### Waiting for external events
@@ -422,7 +419,7 @@ when the event is triggered.
 At its simplest, you can wait for an event **by name**:
 
 ```ts
-await ctx.awaitEvent({ name: "eventName" });
+await ctx.awaitEvent({ name: "eventName" })
 ```
 
 This will wait for the first un-consumed event with the name "eventName", and
@@ -433,7 +430,7 @@ will continue immediately if one was already sent. Events are sent by calling
 await workflow.sendEvent(ctx, {
   name: "eventName",
   workflowId,
-});
+})
 ```
 
 Note: You must send the event on the same workflow component that is waiting for
@@ -445,20 +442,20 @@ You can send a value with the event using the `value` property. For type safety
 and runtime validation, provide a validator on the sending and receiving sides.
 
 ```ts
-const sharedValidator = v.number();
+const sharedValidator = v.number()
 
 // In the workflow:
-const event = await ctx.awaitEvent({ name, validator: sharedValidator });
+const event = await ctx.awaitEvent({ name, validator: sharedValidator })
 
 // From elsewhere:
-await workflow.sendEvent(ctx, { name, workflowId, value: 42 });
+await workflow.sendEvent(ctx, { name, workflowId, value: 42 })
 ```
 
 To send an error, use the `error` property. This will cause `ctx.awaitEvent` to
 throw an error.
 
 ```ts
-await workflow.sendEvent(ctx, { name, workflowId, error: "An error occurred" });
+await workflow.sendEvent(ctx, { name, workflowId, error: "An error occurred" })
 ```
 
 #### Sharing event definitions
@@ -470,14 +467,14 @@ share it between the workflow and the sender:
 const approvalEvent = defineEvent({
   name: "approval",
   validator: v.object({ approved: v.boolean() }),
-});
+})
 
 // In the workflow:
-const approval = await ctx.awaitEvent(approvalEvent);
+const approval = await ctx.awaitEvent(approvalEvent)
 
 // From a mutation:
-const value = { approved: true };
-await workflow.sendEvent(ctx, { ...approvalEvent, workflowId, value });
+const value = { approved: true }
+await workflow.sendEvent(ctx, { ...approvalEvent, workflowId, value })
 ```
 
 See [`example/convex/userConfirmation.ts`](./example/convex/userConfirmation.ts)
@@ -493,13 +490,13 @@ You can also dynamically create an event with `createEvent`:
 const eventId = await workflow.createEvent(ctx, {
   name: "userResponse",
   workflowId,
-});
+})
 ```
 
 Then wait for it by ID in the workflow:
 
 ```ts
-await ctx.awaitEvent({ id: eventId });
+await ctx.awaitEvent({ id: eventId })
 ```
 
 This works well when there are dynamically defined events, for instance a tool
@@ -507,7 +504,7 @@ that is waiting for a response from a user. You would save the eventId somewhere
 to be able to send the event later with `workflow.sendEvent`:
 
 ```ts
-await workflow.sendEvent(ctx, { id: eventId });
+await workflow.sendEvent(ctx, { id: eventId })
 ```
 
 Similar to named events, you can also send a value or error with the event.

@@ -72,7 +72,7 @@ Evals:
 
 ---
 
-## Submission Modes
+## Prompt Submission Modes
 
 Users can choose between three actions:
 
@@ -125,11 +125,20 @@ Additionally:
 
 ---
 
-## Editing Semantics
+## Canvas Editing Semantics
 
 - The stored LLM response can be manually edited by the user.
 - Evals always run against the **stored response**, regardless of whether it originated from the model or manual edits.
 - A canvas is considered “evaluated” only if evals were run after the current response state.
+
+### Canvas Save Actions
+
+When the user manually edits the canvas (LLM response text), they have two explicit options:
+
+1. **Save + Run Evals** – persists the edited response and immediately runs all evals against it
+2. **Save Without Running Evals** – persists the edited response without triggering evaluation
+
+This mirrors the same separation of concerns present in prompt submission: persistence and evaluation are independent actions.
 
 ---
 
