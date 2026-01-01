@@ -54,7 +54,7 @@ export function PromptInput({ preloadedCanvasVersion, className }: Props) {
   const updatePrompt = useMutation(api.public.updateCanvasVersionPrompt)
 
   const submitToBackend = useCallback(
-    async (prompt: string, skipEvals: boolean = false) => {
+    async (prompt: string, skip?: "generation" | "evals") => {
       if (!versionId) {
         console.warn("Cannot submit prompt: versionId is missing")
         return
@@ -62,7 +62,7 @@ export function PromptInput({ preloadedCanvasVersion, className }: Props) {
       await updatePrompt({
         versionId,
         prompt,
-        skipEvals,
+        skip,
       })
     },
     [versionId, updatePrompt],
@@ -77,7 +77,18 @@ export function PromptInput({ preloadedCanvasVersion, className }: Props) {
     if (!isEditing) return
     setIsSubmitting(true)
     try {
-      await submitToBackend(draft, false)
+      await submitToBackend(draft, undefined)
+      setIsEditing(false)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleSavePrompt = async () => {
+    if (!isEditing) return
+    setIsSubmitting(true)
+    try {
+      await submitToBackend(draft, "generation")
       setIsEditing(false)
     } finally {
       setIsSubmitting(false)
@@ -88,7 +99,7 @@ export function PromptInput({ preloadedCanvasVersion, className }: Props) {
     if (!isEditing) return
     setIsSubmitting(true)
     try {
-      await submitToBackend(draft, true)
+      await submitToBackend(draft, "evals")
       setIsEditing(false)
     } finally {
       setIsSubmitting(false)
@@ -177,6 +188,13 @@ export function PromptInput({ preloadedCanvasVersion, className }: Props) {
                     aria-label="Send"
                   >
                     <SendIcon size={16} />
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleSavePrompt}
+                    aria-label="Save Prompt"
+                  >
+                    Save Prompt
                   </Button>
                   <Button
                     type="button"
