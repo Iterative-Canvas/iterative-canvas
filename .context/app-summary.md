@@ -56,7 +56,8 @@ Evals:
 
 - Always run **against whatever response text is currently stored** as the LLM response
 - Never reference or depend on other evals
-- Are executed in parallel
+- Are executed in parallel when running as part of a larger workflow (e.g. regular prompt submission), or when the user manually triggers "Run All"
+- The user may also run a single eval manually
 
 ---
 
@@ -87,9 +88,9 @@ Users can choose between three actions:
 - Generates a new LLM response
 - Automatically runs all evals against that response
 
-3. **Submit Prompt Without Evaluating Requirements**
+3. **Submit Without Running Evals**
 
-- Saves prompt and evals
+- Saves prompt
 - Generates a new LLM response
 - Does not run evals
 
@@ -139,6 +140,26 @@ When the user manually edits the canvas (LLM response text), they have two expli
 2. **Save Without Running Evals** – persists the edited response without triggering evaluation
 
 This mirrors the same separation of concerns present in prompt submission: persistence and evaluation are independent actions.
+
+---
+
+## Summary of Core Workflows
+
+Workflows that can be initiated from the Prompt module:
+
+- Save Prompt -> Generate LLM Response -> Save LLM Response -> Run Evals -> Save Eval Results
+- Save Prompt -> Generate LLM Response -> Save LLM Response
+- Save Prompt
+
+Workflows the can be initiated from the Canvas module:
+
+- Save Manually Edited LLM Response -> Run Evals -> Save Eval Results
+- Save Manually Edited LLM Response
+
+Workflows that can be initiated from the Evals module:
+
+- Run Evals -> Save Eval Results
+- Run Eval -> Save Eval Result
 
 ---
 
