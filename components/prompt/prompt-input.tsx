@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useState } from "react"
+import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { Response } from "@/components/ai-elements/response"
 import {
@@ -17,6 +17,7 @@ import {
   FileIcon,
   ImageIcon,
   SendIcon,
+  CircleStopIcon,
 } from "lucide-react"
 import { CardContent } from "@/components/ui/card"
 import {
@@ -27,7 +28,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { SplitButton } from "@/components/split-button"
-import { usePreloadedQuery, useMutation } from "convex/react"
+import { usePreloadedQuery, useMutation, useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { Preloaded } from "convex/react"
 
@@ -47,62 +48,102 @@ export function PromptInput({ preloadedCanvasVersion, className }: Props) {
   const prompt = canvasVersion?.prompt
   const versionId = canvasVersion?._id
 
+  // Query the streaming response to detect generation status
+  const streamingResponse = useQuery(
+    api.public.getCanvasVersionResponse,
+    versionId ? { versionId } : "skip"
+  )
+  const isGenerating = streamingResponse?.status === "generating"
+
   const [draft, setDraft] = useState(prompt ?? DEFAULT_PROMPT)
   const [isEditing, setIsEditing] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  // Track when we've just submitted for generation to bridge the gap
+  // between mutation completing and query updating
+  const [isPendingGeneration, setIsPendingGeneration] = useState(false)
 
+  // Clear the pending state once the backend confirms generation has started
+  useEffect(() => {
+    if (isGenerating && isPendingGeneration) {
+      setIsPendingGeneration(false)
+    }
+  }, [isGenerating, isPendingGeneration])
+
+  // Combined state: show stop button if generating OR about to generate
+  const showStopButton = isGenerating || isPendingGeneration
+
+  // For saving prompt only (no generation)
   const updatePrompt = useMutation(api.public.updateCanvasVersionPrompt)
+  // For submitting prompt and generating response (with optional evals)
+  const submitPrompt = useMutation(api.public.submitPrompt)
+  // For cancelling an in-progress generation
+  const cancelGeneration = useMutation(api.public.cancelGeneration)
 
-  const submitToBackend = useCallback(
-    async (prompt: string, skip?: "generation" | "evals") => {
-      if (!versionId) {
-        console.warn("Cannot submit prompt: versionId is missing")
-        return
-      }
+  // Save prompt only - no LLM generation
+  const handleSavePrompt = async () => {
+    if (!isEditing || !versionId) return
+    setIsSubmitting(true)
+    try {
       await updatePrompt({
         versionId,
-        prompt,
-        skip,
+        prompt: draft,
       })
-    },
-    [versionId, updatePrompt],
-  )
+      setIsEditing(false)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
-  // handleSubmit is used in two places:
-  // 1. Form's onSubmit handler - triggered when Enter is pressed in the textarea
-  // 2. Primary button's onClick handler - triggered when the button is clicked
-  // The button has type="button" so it doesn't trigger form submission, therefore
-  // this function is not actually executed twice.
+  // Submit prompt - generates LLM response AND runs evals
   const handleSubmit = async () => {
-    if (!isEditing) return
+    if (!isEditing || !versionId) return
     setIsSubmitting(true)
+    setIsPendingGeneration(true) // Immediately show stop button
     try {
-      await submitToBackend(draft, undefined)
+      await submitPrompt({
+        versionId,
+        prompt: draft,
+        skipEvals: false,
+      })
       setIsEditing(false)
+    } catch {
+      setIsPendingGeneration(false) // Clear on error
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  const handleSavePrompt = async () => {
-    if (!isEditing) return
-    setIsSubmitting(true)
-    try {
-      await submitToBackend(draft, "generation")
-      setIsEditing(false)
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
+  // Submit prompt - generates LLM response but skips evals
   const handleSubmitWithSkipEvals = async () => {
-    if (!isEditing) return
+    if (!isEditing || !versionId) return
     setIsSubmitting(true)
+    setIsPendingGeneration(true) // Immediately show stop button
     try {
-      await submitToBackend(draft, "evals")
+      await submitPrompt({
+        versionId,
+        prompt: draft,
+        skipEvals: true,
+      })
       setIsEditing(false)
+    } catch {
+      setIsPendingGeneration(false) // Clear on error
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  // Cancel an in-progress generation
+  const handleCancelGeneration = async () => {
+    if (!versionId) return
+    // Clear pending state immediately for responsive UI
+    setIsPendingGeneration(false)
+    // Only call backend if generation has actually started
+    if (isGenerating) {
+      try {
+        await cancelGeneration({ versionId })
+      } catch (error) {
+        console.error("Failed to cancel generation:", error)
+      }
     }
   }
 
@@ -156,7 +197,16 @@ export function PromptInput({ preloadedCanvasVersion, className }: Props) {
 
           {/* Right: Contextual actions */}
           <div className="flex items-center gap-1">
-            {!isEditing ? (
+            {showStopButton ? (
+              // Show stop button during generation (or pending generation)
+              <PromptInputButton
+                onClick={handleCancelGeneration}
+                aria-label="Stop Generation"
+                className="text-destructive hover:text-destructive"
+              >
+                <CircleStopIcon size={16} />
+              </PromptInputButton>
+            ) : !isEditing ? (
               <PromptInputButton
                 onClick={() => {
                   setDraft(prompt ?? DEFAULT_PROMPT)

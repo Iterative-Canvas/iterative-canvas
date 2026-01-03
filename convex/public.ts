@@ -8,6 +8,9 @@ import {
   upsertCanvasUpdatedTime,
 } from "./helpers"
 import { v } from "convex/values"
+import { workflow } from "./workflow"
+import { internal } from "./_generated/api"
+import { WorkflowId } from "@convex-dev/workflow"
 
 export const getCanvasById = query({
   args: { id: v.id("canvases") },
@@ -578,15 +581,472 @@ export const updateCanvasVersionResponse = mutation({
     if (!canvas) throw new Error(`Canvas ${version.canvasId} not found`)
     if (canvas.userId !== userId) throw new Error("Not authorized")
 
-    // skip is accepted but not used yet
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const _skip = skip
+    // Check if a workflow is already running
+    if (version.activeWorkflowId) {
+      throw new Error("Cannot update response while a workflow is running")
+    }
 
+    // Save the updated response
     await ctx.db.patch(versionId, {
       response,
       hasBeenEdited: true,
+      responseModifiedAt: Date.now(),
+    })
+
+    // If not skipping evals and there's a response to evaluate, run evals
+    if (skip !== "evals" && response && response.trim().length > 0) {
+      // Get all evals for this version
+      const evals = await ctx.db
+        .query("evals")
+        .withIndex("canvasVersionId", (q) => q.eq("canvasVersionId", versionId))
+        .collect()
+
+      // Filter to evals that have criteria defined
+      const evalsToRun = evals.filter((e) => e.eval && e.eval.trim().length > 0)
+
+      // If no evals to run, just mark as complete
+      if (evalsToRun.length === 0) {
+        await ctx.db.patch(versionId, {
+          evalsStatus: "complete",
+          evalsCompletedAt: Date.now(),
+        })
+      } else {
+        // Reset eval states
+        await ctx.db.patch(versionId, {
+          evalsStatus: "idle",
+          evalsCompletedAt: undefined,
+          aggregateScore: undefined,
+          isSuccessful: undefined,
+        })
+
+        for (const evalRecord of evals) {
+          await ctx.db.patch(evalRecord._id, {
+            status: "idle",
+            error: undefined,
+            score: undefined,
+            explanation: undefined,
+            completedAt: undefined,
+          })
+        }
+
+        // Mark evals as running with a temporary workflow marker
+        await ctx.db.patch(versionId, {
+          evalsStatus: "running",
+          activeWorkflowId: "manual-edit-eval-" + Date.now(),
+        })
+
+        // Schedule eval runs
+        for (const evalDef of evalsToRun) {
+          await ctx.scheduler.runAfter(
+            0,
+            internal.actions.runSingleEval.runSingleEval,
+            {
+              evalId: evalDef._id,
+              response: response,
+            }
+          )
+        }
+      }
+    }
+
+    await upsertCanvasUpdatedTime(ctx, version.canvasId)
+  },
+})
+
+// =============================================================================
+// Submit Prompt Workflow
+// =============================================================================
+
+/**
+ * Submit a prompt for LLM response generation and optional eval execution.
+ *
+ * This starts a durable workflow that:
+ * 1. Generates an LLM response (with streaming persistence)
+ * 2. Runs all evals against the response (in parallel)
+ * 3. Computes aggregate scoring
+ *
+ * The workflow is resilient to server restarts and can be canceled.
+ */
+export const submitPrompt = mutation({
+  args: {
+    versionId: v.id("canvasVersions"),
+    prompt: v.optional(v.string()),
+    skipEvals: v.optional(v.boolean()),
+  },
+  returns: v.object({
+    workflowId: v.string(),
+  }),
+  handler: async (
+    ctx,
+    { versionId, prompt, skipEvals }
+  ): Promise<{ workflowId: string }> => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+
+    // Validate access
+    const version = await ctx.db.get(versionId)
+    if (!version) throw new Error("Version not found")
+
+    const canvas = await ctx.db.get(version.canvasId)
+    if (!canvas || canvas.userId !== userId) throw new Error("Not authorized")
+
+    // Check for existing active workflow
+    if (version.activeWorkflowId) {
+      throw new Error("A workflow is already running for this version")
+    }
+
+    // Save prompt if provided
+    if (prompt !== undefined) {
+      await ctx.db.patch(versionId, {
+        prompt,
+        hasBeenEdited: true,
+      })
+    }
+
+    // Reset response/eval state
+    // NOTE: We intentionally keep the old `response` field intact here.
+    // This allows the UI to display the previous response while waiting
+    // for the first chunk of the new response to arrive. The `response`
+    // field will be overwritten by `finalizeResponse` when generation completes.
+    await ctx.db.patch(versionId, {
+      responseStatus: "idle",
+      responseError: undefined,
+      responseErrorAt: undefined,
+      responseCompletedAt: undefined,
+      responseModifiedAt: undefined,
+      generationCancelledAt: undefined, // Clear any previous cancellation
+      evalsStatus: "idle",
+      evalsCompletedAt: undefined,
+      aggregateScore: undefined,
+      isSuccessful: undefined,
+    })
+
+    // Clear existing response chunks
+    const existingChunks = await ctx.db
+      .query("responseChunks")
+      .withIndex("canvasVersionId_chunkIndex", (q) =>
+        q.eq("canvasVersionId", versionId)
+      )
+      .collect()
+    for (const chunk of existingChunks) {
+      await ctx.db.delete(chunk._id)
+    }
+
+    // Reset individual eval states
+    const evals = await ctx.db
+      .query("evals")
+      .withIndex("canvasVersionId", (q) => q.eq("canvasVersionId", versionId))
+      .collect()
+    for (const evalRecord of evals) {
+      await ctx.db.patch(evalRecord._id, {
+        status: "idle",
+        error: undefined,
+        score: undefined,
+        explanation: undefined,
+        completedAt: undefined,
+      })
+    }
+
+    // Start the workflow
+    const workflowId: WorkflowId = await workflow.start(
+      ctx,
+      internal.workflows.submitPrompt.submitPromptWorkflow,
+      { versionId, skipEvals },
+      {
+        onComplete: internal.internal.mutations.onWorkflowComplete,
+        context: { versionId },
+      }
+    )
+
+    // Store workflow reference (as string for database storage)
+    await ctx.db.patch(versionId, {
+      activeWorkflowId: workflowId as unknown as string,
     })
 
     await upsertCanvasUpdatedTime(ctx, version.canvasId)
+
+    return { workflowId: workflowId as unknown as string }
+  },
+})
+
+/**
+ * Cancel a running workflow for a canvas version.
+ */
+export const cancelWorkflow = mutation({
+  args: {
+    versionId: v.id("canvasVersions"),
+  },
+  returns: v.null(),
+  handler: async (ctx, { versionId }): Promise<null> => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+
+    const version = await ctx.db.get(versionId)
+    if (!version) throw new Error("Version not found")
+
+    const canvas = await ctx.db.get(version.canvasId)
+    if (!canvas || canvas.userId !== userId) throw new Error("Not authorized")
+
+    if (!version.activeWorkflowId) {
+      throw new Error("No active workflow to cancel")
+    }
+
+    // Cancel the workflow (cast string back to WorkflowId)
+    await workflow.cancel(
+      ctx,
+      version.activeWorkflowId as unknown as WorkflowId
+    )
+
+    // Clear the reference and update status
+    await ctx.db.patch(versionId, {
+      activeWorkflowId: undefined,
+      responseStatus:
+        version.responseStatus === "generating"
+          ? "idle"
+          : version.responseStatus,
+      evalsStatus:
+        version.evalsStatus === "running" ? "idle" : version.evalsStatus,
+    })
+
+    return null
+  },
+})
+
+/**
+ * Cancel an in-progress response generation.
+ *
+ * This signals the generateResponse action to stop streaming and save
+ * whatever has been received so far as the final response.
+ *
+ * Unlike cancelWorkflow, this allows the action to finish gracefully
+ * rather than being abruptly terminated.
+ */
+export const cancelGeneration = mutation({
+  args: {
+    versionId: v.id("canvasVersions"),
+  },
+  returns: v.null(),
+  handler: async (ctx, { versionId }): Promise<null> => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+
+    const version = await ctx.db.get(versionId)
+    if (!version) throw new Error("Version not found")
+
+    const canvas = await ctx.db.get(version.canvasId)
+    if (!canvas || canvas.userId !== userId) throw new Error("Not authorized")
+
+    if (version.responseStatus !== "generating") {
+      throw new Error("No generation in progress to cancel")
+    }
+
+    // Signal cancellation - the generateResponse action will check this
+    await ctx.db.patch(versionId, {
+      generationCancelledAt: Date.now(),
+    })
+
+    return null
+  },
+})
+
+/**
+ * Get the current response state for a canvas version.
+ * Uses chunks for streaming (when generating) or consolidated response (when complete).
+ *
+ * This query is reactive - it will update in real-time as chunks are added.
+ */
+export const getCanvasVersionResponse = query({
+  args: { versionId: v.id("canvasVersions") },
+  handler: async (ctx, { versionId }) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+
+    const version = await ctx.db.get(versionId)
+    if (!version) throw new Error("Version not found")
+
+    const canvas = await ctx.db.get(version.canvasId)
+    if (!canvas || canvas.userId !== userId) throw new Error("Not authorized")
+
+    // If generating, return chunks concatenated; otherwise return consolidated response
+    if (version.responseStatus === "generating") {
+      const chunks = await ctx.db
+        .query("responseChunks")
+        .withIndex("canvasVersionId_chunkIndex", (q) =>
+          q.eq("canvasVersionId", versionId)
+        )
+        .collect()
+
+      // Sort by chunkIndex and concatenate
+      chunks.sort((a, b) => a.chunkIndex - b.chunkIndex)
+      const streamedContent = chunks.map((c) => c.content).join("")
+
+      // If no chunks have arrived yet, show the previous response as a fallback
+      // This prevents a flash of placeholder text while waiting for the first chunk
+      const displayContent =
+        streamedContent.length > 0 ? streamedContent : (version.response ?? "")
+
+      return {
+        status: version.responseStatus,
+        content: displayContent,
+        isComplete: false,
+        error: version.responseError,
+        errorAt: version.responseErrorAt,
+      }
+    }
+
+    return {
+      status: version.responseStatus ?? "idle",
+      content: version.response ?? "",
+      isComplete: version.responseStatus === "complete",
+      error: version.responseError,
+      errorAt: version.responseErrorAt,
+    }
+  },
+})
+
+/**
+ * Run a single eval against the current response.
+ * Useful for testing or re-running a specific eval.
+ */
+export const runSingleEvalManually = mutation({
+  args: {
+    evalId: v.id("evals"),
+  },
+  returns: v.null(),
+  handler: async (ctx, { evalId }): Promise<null> => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+
+    const evalRecord = await ctx.db.get(evalId)
+    if (!evalRecord) throw new Error("Eval not found")
+
+    const version = await ctx.db.get(evalRecord.canvasVersionId)
+    if (!version) throw new Error("Version not found")
+
+    const canvas = await ctx.db.get(version.canvasId)
+    if (!canvas || canvas.userId !== userId) throw new Error("Not authorized")
+
+    if (!version.response) {
+      throw new Error("No response to evaluate")
+    }
+
+    if (version.activeWorkflowId || version.evalsStatus === "running") {
+      throw new Error("Cannot run eval while a workflow or eval run is in progress")
+    }
+
+    // Reset this eval's status
+    await ctx.db.patch(evalId, {
+      status: "idle",
+      error: undefined,
+      score: undefined,
+      explanation: undefined,
+      completedAt: undefined,
+    })
+
+    // Mark eval as running
+    await ctx.db.patch(evalId, {
+      status: "running",
+    })
+
+    // Schedule the eval action
+    await ctx.scheduler.runAfter(
+      0,
+      internal.actions.runSingleEval.runSingleEval,
+      {
+        evalId,
+        response: version.response,
+      }
+    )
+
+    await upsertCanvasUpdatedTime(ctx, version.canvasId)
+
+    return null
+  },
+})
+
+/**
+ * Run all evals against the current response (without regenerating the response).
+ * Useful for re-running evals after manual response edits.
+ */
+export const runEvals = mutation({
+  args: {
+    versionId: v.id("canvasVersions"),
+  },
+  handler: async (ctx, { versionId }) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) throw new Error("Not authenticated")
+
+    const version = await ctx.db.get(versionId)
+    if (!version) throw new Error("Version not found")
+
+    const canvas = await ctx.db.get(version.canvasId)
+    if (!canvas || canvas.userId !== userId) throw new Error("Not authorized")
+
+    if (!version.response) {
+      throw new Error("No response to evaluate")
+    }
+
+    if (version.activeWorkflowId) {
+      throw new Error("A workflow is already running for this version")
+    }
+
+    // Reset eval states
+    await ctx.db.patch(versionId, {
+      evalsStatus: "idle",
+      evalsCompletedAt: undefined,
+      aggregateScore: undefined,
+      isSuccessful: undefined,
+    })
+
+    const evals = await ctx.db
+      .query("evals")
+      .withIndex("canvasVersionId", (q) => q.eq("canvasVersionId", versionId))
+      .collect()
+
+    for (const evalRecord of evals) {
+      await ctx.db.patch(evalRecord._id, {
+        status: "idle",
+        error: undefined,
+        score: undefined,
+        explanation: undefined,
+        completedAt: undefined,
+      })
+    }
+
+    // Filter to evals that have criteria defined
+    const evalsToRun = evals.filter((e) => e.eval && e.eval.trim().length > 0)
+
+    // If no evals to run, mark as complete immediately
+    if (evalsToRun.length === 0) {
+      await ctx.db.patch(versionId, {
+        evalsStatus: "complete",
+        evalsCompletedAt: Date.now(),
+      })
+      await upsertCanvasUpdatedTime(ctx, version.canvasId)
+      return null
+    }
+
+    // Mark evals as running with a temporary workflow marker
+    await ctx.db.patch(versionId, {
+      evalsStatus: "running",
+      activeWorkflowId: "eval-run-" + Date.now(),
+    })
+
+    // Schedule eval runs - each eval will check if it's the last to complete
+    // and will compute the aggregate + clear activeWorkflowId when all are done
+    for (const evalDef of evalsToRun) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.actions.runSingleEval.runSingleEval,
+        {
+          evalId: evalDef._id,
+          response: version.response,
+        }
+      )
+    }
+
+    await upsertCanvasUpdatedTime(ctx, version.canvasId)
+
+    return null
   },
 })

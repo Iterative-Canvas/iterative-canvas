@@ -31,10 +31,10 @@ import {
   Plus,
 } from "lucide-react"
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import ModelCombobox from "@/components/ai-elements/model-combobox"
 import { Doc, Id } from "@/convex/_generated/dataModel"
 import { api } from "@/convex/_generated/api"
@@ -43,6 +43,8 @@ type EvalsContentProps = {
   preloadedCanvasVersion?: Preloaded<typeof api.public.getCanvasVersionById>
   preloadedAvailableModels?: Preloaded<typeof api.public.getAvailableModels>
 }
+
+type EvalStatus = "idle" | "running" | "complete" | "error"
 
 type Requirement = {
   id: Id<"evals">
@@ -53,7 +55,7 @@ type Requirement = {
   model: Id<"aiGatewayModels"> | undefined // Model ID (from aiGatewayModels._id)
   required: boolean
   fitToContent: boolean
-  loading: boolean
+  status: EvalStatus // Derived from backend eval.status
   result: "pass" | "fail" | null
   score: number | null
   reasoning: string | null
@@ -78,14 +80,12 @@ type Requirement = {
 
 interface ResultIndicatorProps {
   result: "pass" | "fail" | null
-  score: number | null
   reasoning: string | null
   className?: string
 }
 
 const ResultIndicator = ({
   result,
-  score,
   reasoning,
   className = "",
 }: ResultIndicatorProps) => {
@@ -98,6 +98,7 @@ const ResultIndicator = ({
       <CircleDashed className="h-4 w-4" />
     )
 
+  // No result yet - show disabled button without tooltip
   if (!result) {
     return (
       <Button
@@ -111,29 +112,96 @@ const ResultIndicator = ({
     )
   }
 
+  // Has result - show with tooltip containing reasoning
   return (
-    <Popover>
-      <PopoverTrigger asChild>
+    <Tooltip>
+      <TooltipTrigger asChild>
         <Button
           variant="ghost"
           size="icon"
-          className={cn("h-8 w-8", className)}
+          className={cn("h-8 w-8 cursor-default", className)}
         >
           {icon}
         </Button>
-      </PopoverTrigger>
-      <PopoverContent>
-        <div className="grid gap-2 text-sm">
-          <p>
-            <span className="font-semibold">Score:</span> {score?.toFixed(2)}
-          </p>
-          <div>
-            <p className="font-semibold">Reasoning:</p>
-            <p className="text-muted-foreground">{reasoning}</p>
-          </div>
-        </div>
-      </PopoverContent>
-    </Popover>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-xs">
+        <p>{reasoning}</p>
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
+interface GlobalResultIndicatorProps {
+  evalsStatus?: "idle" | "running" | "complete" | "error"
+  aggregateScore?: number
+  isSuccessful?: boolean
+  successThreshold: number
+}
+
+const GlobalResultIndicator = ({
+  evalsStatus,
+  aggregateScore,
+  isSuccessful,
+  successThreshold,
+}: GlobalResultIndicatorProps) => {
+  // Determine result state based on evalsStatus and isSuccessful
+  const hasResult = evalsStatus === "complete" && aggregateScore !== undefined
+  
+  let result: "pass" | "fail" | null = null
+  if (hasResult) {
+    result = isSuccessful ? "pass" : "fail"
+  }
+
+  const icon =
+    result === "pass" ? (
+      <CircleCheck className="h-4 w-4 text-green-500" />
+    ) : result === "fail" ? (
+      <TriangleAlert className="h-4 w-4 text-red-500" />
+    ) : (
+      <CircleDashed className="h-4 w-4" />
+    )
+
+  // No result yet - show disabled button without tooltip
+  if (!hasResult) {
+    return (
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8 mr-4"
+        disabled
+      >
+        {icon}
+      </Button>
+    )
+  }
+
+  // Build reasoning message
+  const scorePercent = (aggregateScore * 100).toFixed(0)
+  const thresholdPercent = (successThreshold * 100).toFixed(0)
+  const reasoning = isSuccessful
+    ? `Success! Aggregate score of ${scorePercent}% meets the ${thresholdPercent}% threshold.`
+    : `Failed. Aggregate score of ${scorePercent}% is below the ${thresholdPercent}% threshold${
+        aggregateScore >= successThreshold
+          ? ", or a required eval did not pass."
+          : "."
+      }`
+
+  // Has result - show with tooltip
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 mr-4 cursor-default"
+        >
+          {icon}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-xs">
+        <p>{reasoning}</p>
+      </TooltipContent>
+    </Tooltip>
   )
 }
 
@@ -172,33 +240,20 @@ export function EvalsContent({
   const [fitToContentMap, setFitToContentMap] = useState<
     Map<Id<"evals">, boolean>
   >(new Map())
-  const [loadingMap, setLoadingMap] = useState<Map<Id<"evals">, boolean>>(
-    new Map(),
-  )
-  const [resultMap, setResultMap] = useState<
-    Map<
-      Id<"evals">,
-      {
-        result: "pass" | "fail" | null
-        score: number | null
-        reasoning: string | null
-      }
-    >
-  >(new Map())
   // Draft text for debounced updates
   const [draftTextMap, setDraftTextMap] = useState<Map<Id<"evals">, string>>(
     new Map(),
   )
   // Refs to track debounce timers
   const debounceTimersRef = useRef<Map<Id<"evals">, NodeJS.Timeout>>(new Map())
-  const [isRunAllLoading, setIsRunAllLoading] = useState(false)
-  const [overallResult, setOverallResult] = useState<
-    Pick<ResultIndicatorProps, "result" | "score" | "reasoning">
-  >({
-    result: null,
-    score: null,
-    reasoning: null,
-  })
+
+  // Derive disabled state from backend - disabled when workflow is active or evals are running
+  const isDisabled = Boolean(
+    canvasVersion?.activeWorkflowId || canvasVersion?.evalsStatus === "running"
+  )
+  
+  // Derive evals running state from backend
+  const isEvalsRunning = canvasVersion?.evalsStatus === "running"
 
   // Create a map of models by ID for fast lookup
   const modelsById = useMemo(() => {
@@ -240,13 +295,21 @@ export function EvalsContent({
     return evals.map((evalRecord) => {
       const type: "pass-fail" | "subjective" =
         evalRecord.type === "pass_fail" ? "pass-fail" : "subjective"
-      const resultData = resultMap.get(evalRecord._id) || {
-        result: null,
-        score: null,
-        reasoning: null,
-      }
       // Derive text using helper function
       const text = getEvalText(evalRecord._id)
+
+      // Derive result from backend score
+      // For pass_fail: score of 1 = pass, 0 = fail
+      // For subjective: score >= threshold = pass
+      let result: "pass" | "fail" | null = null
+      if (evalRecord.status === "complete" && evalRecord.score !== undefined) {
+        if (evalRecord.type === "pass_fail") {
+          result = evalRecord.score === 1 ? "pass" : "fail"
+        } else {
+          const threshold = evalRecord.threshold ?? 0.5
+          result = evalRecord.score >= threshold ? "pass" : "fail"
+        }
+      }
 
       return {
         id: evalRecord._id,
@@ -257,11 +320,13 @@ export function EvalsContent({
         model: evalRecord.modelId,
         required: evalRecord.isRequired,
         fitToContent: fitToContentMap.get(evalRecord._id) ?? false,
-        loading: loadingMap.get(evalRecord._id) ?? false,
-        ...resultData,
+        status: (evalRecord.status ?? "idle") as EvalStatus,
+        result,
+        score: evalRecord.score ?? null,
+        reasoning: evalRecord.explanation ?? null,
       }
     })
-  }, [evals, fitToContentMap, loadingMap, resultMap, getEvalText])
+  }, [evals, fitToContentMap, getEvalText])
 
   // Sync success threshold with server
   const [successThreshold, setSuccessThreshold] = useState(
@@ -405,155 +470,41 @@ export function EvalsContent({
     [versionId, updateSuccessThreshold],
   )
 
-  const runSingleRequirement = async (req: Requirement) => {
-    let newResult: "pass" | "fail" = "fail"
-    let newScore: number | null = null
-    let newReasoning = ""
+  // Mutation for running all evals
+  const runEvals = useMutation(api.public.runEvals)
+  // Mutation for running a single eval
+  const runSingleEvalManually = useMutation(api.public.runSingleEvalManually)
 
-    if (req.type === "pass-fail") {
-      const randomBit = Math.round(Math.random())
-      newScore = randomBit
-      if (randomBit === 1) newResult = "pass"
-    } else if (req.type === "subjective") {
-      const randomValue = Math.random()
-      newScore = randomValue
-      if (randomValue >= req.threshold) newResult = "pass"
+  // Handler for running all evals
+  const handleRunAll = useCallback(async () => {
+    if (!versionId || isDisabled) return
+    try {
+      await runEvals({ versionId })
+    } catch (error) {
+      console.error("Failed to run evals:", error)
     }
+  }, [versionId, runEvals, isDisabled])
 
-    if (newScore !== null) {
-      if (newResult === "pass") {
-        newReasoning = `The model's output successfully met the criteria with a score of ${newScore.toFixed(2)}.`
-      } else {
-        newReasoning = `The model's output did not meet the threshold. It scored ${newScore.toFixed(2)} which is below the required pass condition.`
+  // Handler for running a single eval
+  const handleRunSingleEval = useCallback(
+    async (evalId: Id<"evals">) => {
+      if (isDisabled) return
+      try {
+        await runSingleEvalManually({ evalId })
+      } catch (error) {
+        console.error("Failed to run eval:", error)
       }
-    }
-
-    return {
-      result: newResult,
-      score: newScore,
-      reasoning: newReasoning,
-    }
-  }
-
-  const handleRunRequirement = async (id: Id<"evals">) => {
-    setLoadingMap((prev) => {
-      const newMap = new Map(prev)
-      newMap.set(id, true)
-      return newMap
-    })
-    setResultMap((prev) => {
-      const newMap = new Map(prev)
-      newMap.set(id, { result: null, score: null, reasoning: null })
-      return newMap
-    })
-
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-    const reqToRun = requirements.find((r) => r.id === id)
-    if (reqToRun) {
-      const result = await runSingleRequirement(reqToRun)
-      setLoadingMap((prev) => {
-        const newMap = new Map(prev)
-        newMap.set(id, false)
-        return newMap
-      })
-      setResultMap((prev) => {
-        const newMap = new Map(prev)
-        newMap.set(id, result)
-        return newMap
-      })
-    }
-  }
-
-  const handleRunAll = async () => {
-    setIsRunAllLoading(true)
-    setOverallResult({ result: null, score: null, reasoning: null })
-
-    // Set all requirements to loading
-    const loadingMapUpdate = new Map<Id<"evals">, boolean>()
-    const resultMapUpdate = new Map<
-      Id<"evals">,
-      {
-        result: "pass" | "fail" | null
-        score: number | null
-        reasoning: string | null
-      }
-    >()
-    requirements.forEach((req) => {
-      loadingMapUpdate.set(req.id, true)
-      resultMapUpdate.set(req.id, {
-        result: null,
-        score: null,
-        reasoning: null,
-      })
-    })
-    setLoadingMap(loadingMapUpdate)
-    setResultMap(resultMapUpdate)
-
-    const updatedResults = await Promise.all(
-      requirements.map(
-        (req) =>
-          new Promise<{
-            id: Id<"evals">
-            result: Awaited<ReturnType<typeof runSingleRequirement>>
-          }>(async (resolve) => {
-            await new Promise((r) => setTimeout(r, 500 + Math.random() * 1000))
-            const result = await runSingleRequirement(req)
-            resolve({ id: req.id, result })
-          }),
-      ),
-    )
-
-    // Update results
-    const finalLoadingMap = new Map<Id<"evals">, boolean>()
-    const finalResultMap = new Map<
-      Id<"evals">,
-      {
-        result: "pass" | "fail" | null
-        score: number | null
-        reasoning: string | null
-      }
-    >()
-    updatedResults.forEach(({ id, result }) => {
-      finalLoadingMap.set(id, false)
-      finalResultMap.set(id, result)
-    })
-    setLoadingMap(finalLoadingMap)
-    setResultMap(finalResultMap)
-
-    // Calculate overall score
-    const validReqs: Array<Requirement & { score: number }> = []
-    for (const { id, result } of updatedResults) {
-      const req = requirements.find((r) => r.id === id)
-      if (req && result.score !== null) {
-        validReqs.push({ ...req, score: result.score })
-      }
-    }
-
-    const totalWeight = validReqs.reduce((sum, req) => sum + req.weight, 0)
-    const weightedSum = validReqs.reduce(
-      (sum, req) => sum + req.score * req.weight,
-      0,
-    )
-    const overallScore = totalWeight > 0 ? weightedSum / totalWeight : 0
-    const overallPass = overallScore >= successThreshold
-
-    const overallReasoning = `Overall weighted score of ${overallScore.toFixed(2)} was ${
-      overallPass ? "above" : "below"
-    } the success threshold of ${successThreshold}.`
-
-    setOverallResult({
-      result: overallPass ? "pass" : "fail",
-      score: overallScore,
-      reasoning: overallReasoning,
-    })
-    setIsRunAllLoading(false)
-  }
+    },
+    [runSingleEvalManually, isDisabled]
+  )
 
   return (
     <CardContent className="flex flex-1 flex-col gap-3 overflow-auto">
       <Card className="flex flex-1 flex-col pl-8 pr-4 rounded-md shadow-xs overflow-auto">
         <div className="flex-1 space-y-10 min-h-[120px]">
-          {requirements.map((req) => (
+          {requirements.map((req) => {
+            const isEvalRunning = req.status === "running"
+            return (
             <div key={req.id} className="flex flex-col gap-2 -ml-6">
               <div className="flex">
                 <Button
@@ -562,6 +513,7 @@ export function EvalsContent({
                   variant="ghost"
                   className="h-6 w-6 mt-1 hover:text-red-500"
                   onClick={() => handleDeleteRequirement(req.id)}
+                  disabled={isDisabled}
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -580,6 +532,7 @@ export function EvalsContent({
                       onChange={(e) =>
                         handleRequirementChange(req.id, "text", e.target.value)
                       }
+                      disabled={isDisabled}
                     />
                     <Button
                       type="button"
@@ -610,6 +563,7 @@ export function EvalsContent({
                               Boolean(checked),
                             )
                           }
+                          disabled={isDisabled}
                         />
                       </div>
                       <div className="flex items-center gap-1.5">
@@ -628,6 +582,7 @@ export function EvalsContent({
                             )
                           }
                           className="h-6 w-14 text-xs"
+                          disabled={isDisabled}
                         />
                       </div>
                       <div className="flex items-center gap-1.5">
@@ -637,6 +592,7 @@ export function EvalsContent({
                           onValueChange={(value: "pass-fail" | "subjective") =>
                             handleRequirementChange(req.id, "type", value)
                           }
+                          disabled={isDisabled}
                         >
                           <SelectTrigger className="h-6 text-xs w-28">
                             <SelectValue />
@@ -669,6 +625,7 @@ export function EvalsContent({
                               )
                             }
                             className="h-6 w-16 text-xs"
+                            disabled={isDisabled}
                           />
                         </div>
                       )}
@@ -682,15 +639,16 @@ export function EvalsContent({
                           }
                           availableModels={availableModels}
                           className="h-6"
+                          disabled={isDisabled}
                         />
                         <Button
                           variant="ghost"
                           size="icon"
                           className="h-6 w-6"
-                          onClick={() => handleRunRequirement(req.id)}
-                          disabled={req.loading}
+                          disabled={isDisabled || isEvalRunning}
+                          onClick={() => handleRunSingleEval(req.id)}
                         >
-                          {req.loading ? (
+                          {isEvalRunning ? (
                             <Loader2 className="h-3 w-3 animate-spin" />
                           ) : (
                             <Play className="h-3 w-3" />
@@ -699,7 +657,6 @@ export function EvalsContent({
                         <Separator orientation="vertical" className="h-4" />
                         <ResultIndicator
                           result={req.result}
-                          score={req.score}
                           reasoning={req.reasoning}
                         />
                       </div>
@@ -708,7 +665,7 @@ export function EvalsContent({
                 </div>
               </div>
             </div>
-          ))}
+          )})}
           {/* A little hack to keep proper spacing between the last list item and the bottom border of the card container */}
           <div className="h-px" />
         </div>
@@ -729,9 +686,15 @@ export function EvalsContent({
               handleSuccessThresholdChange(Number.parseFloat(e.target.value))
             }
             className="h-8 w-20"
+            disabled={isDisabled}
           />
         </div>
-        <Button variant="outline" size="sm" onClick={handleAddRequirement}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleAddRequirement}
+          disabled={isDisabled}
+        >
           <Plus className="h-4 w-4 mr-2" />
           Add Requirement
         </Button>
@@ -739,9 +702,9 @@ export function EvalsContent({
           variant="outline"
           size="sm"
           onClick={handleRunAll}
-          disabled={isRunAllLoading}
+          disabled={isDisabled}
         >
-          {isRunAllLoading ? (
+          {isEvalsRunning ? (
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
           ) : (
             <PlayCircle className="h-4 w-4 mr-2" />
@@ -749,11 +712,12 @@ export function EvalsContent({
           Run All
         </Button>
         <Separator orientation="vertical" className="h-6" />
-        <ResultIndicator
-          result={overallResult.result}
-          score={overallResult.score}
-          reasoning={overallResult.reasoning}
-          className="mr-4"
+        {/* Global result indicator */}
+        <GlobalResultIndicator
+          evalsStatus={canvasVersion?.evalsStatus}
+          aggregateScore={canvasVersion?.aggregateScore}
+          isSuccessful={canvasVersion?.isSuccessful}
+          successThreshold={successThreshold}
         />
       </div>
     </CardContent>

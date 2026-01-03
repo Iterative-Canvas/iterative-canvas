@@ -20,6 +20,9 @@ importers:
       '@convex-dev/auth':
         specifier: ^0.0.90
         version: 0.0.90(@auth/core@0.37.4)(convex@1.31.2(react@19.2.3))(react@19.2.3)
+      '@convex-dev/workflow':
+        specifier: ^0.3.3
+        version: 0.3.3(@convex-dev/workpool@0.3.0(convex-helpers@0.1.108(@standard-schema/spec@1.1.0)(convex@1.31.2(react@19.2.3))(react@19.2.3)(typescript@5.9.3)(zod@4.2.1))(convex@1.31.2(react@19.2.3)))(convex-helpers@0.1.108(@standard-schema/spec@1.1.0)(convex@1.31.2(react@19.2.3))(react@19.2.3)(typescript@5.9.3)(zod@4.2.1))(convex@1.31.2(react@19.2.3))
       '@radix-ui/react-avatar':
         specifier: ^1.1.10
         version: 1.1.11(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -86,6 +89,9 @@ importers:
       next:
         specifier: 16.0.10
         version: 16.0.10(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      next-themes:
+        specifier: ^0.4.6
+        version: 0.4.6(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react:
         specifier: 19.2.3
         version: 19.2.3
@@ -95,6 +101,9 @@ importers:
       react-resizable-panels:
         specifier: ^3.0.4
         version: 3.0.6(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      sonner:
+        specifier: ^2.0.7
+        version: 2.0.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       streamdown:
         specifier: ^1.1.0
         version: 1.6.10(@types/mdast@4.0.4)(micromark-util-types@2.0.2)(micromark@4.0.2)(react@19.2.3)
@@ -294,6 +303,19 @@ packages:
     peerDependenciesMeta:
       react:
         optional: true
+
+  '@convex-dev/workflow@0.3.3':
+    resolution: {integrity: sha512-wmW5Sr2GIMUZEQ+bUQ0A3b2y8Rkt+hS8gw2KPs3WhRV2ZxgMz1ftfcnDm3i4VykSCACxjvL7wFV4NHwv8V+H4w==}
+    peerDependencies:
+      '@convex-dev/workpool': ^0.3.0
+      convex: ^1.24.8
+      convex-helpers: ^0.1.99
+
+  '@convex-dev/workpool@0.3.0':
+    resolution: {integrity: sha512-nY8Ub0pmfuxZ2rcnNwVeESYPyJqLU4h+afodEdg8Ifnr+vcFUuee/p69vMFmeqC2y4yo9IDPHrdiVZVyjbBE7A==}
+    peerDependencies:
+      convex: ^1.24.8
+      convex-helpers: ^0.1.94
 
   '@emnapi/core@1.7.1':
     resolution: {integrity: sha512-o1uhUASyo921r2XtHYOHy7gdkGLge8ghBEQHMWmyJFoXlpU58kIrhhN3w26lpQb6dspetweapMn2CSNwQ8I4wg==}
@@ -2054,6 +2076,9 @@ packages:
   ast-types-flow@0.0.8:
     resolution: {integrity: sha512-OH/2E5Fg20h2aPrbe+QL8JZQFko0YZaF+j4mnQ7BGhfavO7OpSLa8a0y9sBwomHdSbkhTS8TQNayBfnW5DwbvQ==}
 
+  async-channel@0.2.0:
+    resolution: {integrity: sha512-BJyjI/sfKlyijaBt2hbOSxT28xGNtLR0QLzAKO1Hlnv5BULY7sAoYoTPW3lfr1ZIC7y+FxabxO9T8GXpyoofGg==}
+
   async-function@1.0.0:
     resolution: {integrity: sha512-hsU18Ae8CDTR6Kgu9DYf0EbCr/a5iGL0rytQDobUcdpYOKokk8LEjVphnXkDkgpi0wYVsqrXuP0bZxJaTqdgoA==}
     engines: {node: '>= 0.4'}
@@ -2196,6 +2221,28 @@ packages:
 
   convert-source-map@2.0.0:
     resolution: {integrity: sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg==}
+
+  convex-helpers@0.1.108:
+    resolution: {integrity: sha512-5dHYX4Dy/qnBuvP5CI9ZKEwYtSlyQKK2MiIdGTVV8WUON5mWr/St8IeBxsJTBNh/vuBrlX0XPAZ1arbk4KQUdg==}
+    hasBin: true
+    peerDependencies:
+      '@standard-schema/spec': ^1.0.0
+      convex: ^1.25.4
+      hono: ^4.0.5
+      react: ^17.0.2 || ^18.0.0 || ^19.0.0
+      typescript: ^5.5
+      zod: ^3.25.0 || ^4.0.0
+    peerDependenciesMeta:
+      '@standard-schema/spec':
+        optional: true
+      hono:
+        optional: true
+      react:
+        optional: true
+      typescript:
+        optional: true
+      zod:
+        optional: true
 
   convex@1.31.2:
     resolution: {integrity: sha512-RFuJOwlL2bM5X63egvBI5ZZZH6wESREpAbHsLjODxzDeJuewTLKrEnbvHV/NWp1uJYpgEFJziuGHmZ0tnAmmJg==}
@@ -3472,6 +3519,12 @@ packages:
   natural-compare@1.4.0:
     resolution: {integrity: sha512-OWND8ei3VtNC9h7V60qff3SVobHr996CTwgxubgyQYEpg290h9J0buyECNNJexkFm5sOajh5G116RYA1c8ZMSw==}
 
+  next-themes@0.4.6:
+    resolution: {integrity: sha512-pZvgD5L0IEvX5/9GWyHMf3m8BKiVQwsCMHfoFosXtXBMnaS0ZnIJ9ST4b4NqLVKDEm8QBxoNNGNaBv2JNF6XNA==}
+    peerDependencies:
+      react: ^16.8 || ^17 || ^18 || ^19 || ^19.0.0-rc
+      react-dom: ^16.8 || ^17 || ^18 || ^19 || ^19.0.0-rc
+
   next@16.0.10:
     resolution: {integrity: sha512-RtWh5PUgI+vxlV3HdR+IfWA1UUHu0+Ram/JBO4vWB54cVPentCD0e+lxyAYEsDTqGGMg7qpjhKh6dc6aW7W/sA==}
     engines: {node: '>=20.9.0'}
@@ -3886,6 +3939,12 @@ packages:
 
   siginfo@2.0.0:
     resolution: {integrity: sha512-ybx0WO1/8bSBLEWXZvEd7gMW3Sn3JFlW3TvX1nREbDLRNQNaeNN8WK0meBwPdAaOI7TtRRRJn/Es1zhrrCHu7g==}
+
+  sonner@2.0.7:
+    resolution: {integrity: sha512-W6ZN4p58k8aDKA4XPcx2hpIQXBRAgyiWVkYhT7CvK6D3iAu7xjvVyhQHg2/iaKJZ1XVJ4r7XuwGL+WGEK37i9w==}
+    peerDependencies:
+      react: ^18.0.0 || ^19.0.0 || ^19.0.0-rc
+      react-dom: ^18.0.0 || ^19.0.0 || ^19.0.0-rc
 
   source-map-js@1.2.1:
     resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
@@ -4521,6 +4580,18 @@ snapshots:
       server-only: 0.0.1
     optionalDependencies:
       react: 19.2.3
+
+  '@convex-dev/workflow@0.3.3(@convex-dev/workpool@0.3.0(convex-helpers@0.1.108(@standard-schema/spec@1.1.0)(convex@1.31.2(react@19.2.3))(react@19.2.3)(typescript@5.9.3)(zod@4.2.1))(convex@1.31.2(react@19.2.3)))(convex-helpers@0.1.108(@standard-schema/spec@1.1.0)(convex@1.31.2(react@19.2.3))(react@19.2.3)(typescript@5.9.3)(zod@4.2.1))(convex@1.31.2(react@19.2.3))':
+    dependencies:
+      '@convex-dev/workpool': 0.3.0(convex-helpers@0.1.108(@standard-schema/spec@1.1.0)(convex@1.31.2(react@19.2.3))(react@19.2.3)(typescript@5.9.3)(zod@4.2.1))(convex@1.31.2(react@19.2.3))
+      async-channel: 0.2.0
+      convex: 1.31.2(react@19.2.3)
+      convex-helpers: 0.1.108(@standard-schema/spec@1.1.0)(convex@1.31.2(react@19.2.3))(react@19.2.3)(typescript@5.9.3)(zod@4.2.1)
+
+  '@convex-dev/workpool@0.3.0(convex-helpers@0.1.108(@standard-schema/spec@1.1.0)(convex@1.31.2(react@19.2.3))(react@19.2.3)(typescript@5.9.3)(zod@4.2.1))(convex@1.31.2(react@19.2.3))':
+    dependencies:
+      convex: 1.31.2(react@19.2.3)
+      convex-helpers: 0.1.108(@standard-schema/spec@1.1.0)(convex@1.31.2(react@19.2.3))(react@19.2.3)(typescript@5.9.3)(zod@4.2.1)
 
   '@emnapi/core@1.7.1':
     dependencies:
@@ -6089,6 +6160,8 @@ snapshots:
 
   ast-types-flow@0.0.8: {}
 
+  async-channel@0.2.0: {}
+
   async-function@1.0.0: {}
 
   available-typed-arrays@1.0.7:
@@ -6230,6 +6303,15 @@ snapshots:
   confbox@0.1.8: {}
 
   convert-source-map@2.0.0: {}
+
+  convex-helpers@0.1.108(@standard-schema/spec@1.1.0)(convex@1.31.2(react@19.2.3))(react@19.2.3)(typescript@5.9.3)(zod@4.2.1):
+    dependencies:
+      convex: 1.31.2(react@19.2.3)
+    optionalDependencies:
+      '@standard-schema/spec': 1.1.0
+      react: 19.2.3
+      typescript: 5.9.3
+      zod: 4.2.1
 
   convex@1.31.2(react@19.2.3):
     dependencies:
@@ -7983,6 +8065,11 @@ snapshots:
 
   natural-compare@1.4.0: {}
 
+  next-themes@0.4.6(react-dom@19.2.3(react@19.2.3))(react@19.2.3):
+    dependencies:
+      react: 19.2.3
+      react-dom: 19.2.3(react@19.2.3)
+
   next@16.0.10(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3):
     dependencies:
       '@next/env': 16.0.10
@@ -8527,6 +8614,11 @@ snapshots:
       side-channel-weakmap: 1.0.2
 
   siginfo@2.0.0: {}
+
+  sonner@2.0.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3):
+    dependencies:
+      react: 19.2.3
+      react-dom: 19.2.3(react@19.2.3)
 
   source-map-js@1.2.1: {}
 
