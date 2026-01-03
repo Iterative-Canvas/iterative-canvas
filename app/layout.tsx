@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { ConvexClientProvider } from "@/providers/ConvexClientProvider"
 import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server"
+import { Toaster } from "@/components/ui/sonner"
 import "./globals.css"
 
 const geistSans = Geist({
@@ -31,6 +32,7 @@ export default function RootLayout({
           className={`${geistSans.variable} ${geistMono.variable} antialiased font-sans`}
         >
           <ConvexClientProvider>{children}</ConvexClientProvider>
+          <Toaster position="bottom-right" />
         </body>
       </html>
     </ConvexAuthNextjsServerProvider>

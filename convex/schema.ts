@@ -67,8 +67,10 @@ const schema = defineSchema({
         v.literal("error")
       )
     ),
-    // Error message if responseStatus is "error"
+    // Error message (set on any error, including during retries)
     responseError: v.optional(v.string()),
+    // Timestamp of the last error (used by frontend to detect retries)
+    responseErrorAt: v.optional(v.number()),
     // Timestamp when response generation completed (or errored)
     responseCompletedAt: v.optional(v.number()),
     // Timestamp when response was last modified (generation or manual edit)
@@ -92,6 +94,11 @@ const schema = defineSchema({
     aggregateScore: v.optional(v.number()),
     // Overall success: aggregateScore >= successThreshold AND all required evals passed
     isSuccessful: v.optional(v.boolean()),
+    // =========================================================================
+    // Cancellation Tracking
+    // =========================================================================
+    // Timestamp when user requested cancellation (checked by generateResponse action)
+    generationCancelledAt: v.optional(v.number()),
     // =========================================================================
     // Workflow Tracking (for durable workflows)
     // =========================================================================

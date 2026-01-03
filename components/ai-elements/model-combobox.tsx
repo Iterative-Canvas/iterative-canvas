@@ -34,6 +34,7 @@ export type ModelComboboxProps = {
   className?: string
   placeholder?: string
   availableModels: Doc<"aiGatewayModels">[]
+  disabled?: boolean
 }
 
 export function ModelCombobox({
@@ -42,6 +43,7 @@ export function ModelCombobox({
   className,
   placeholder = "No model selected",
   availableModels,
+  disabled = false,
 }: ModelComboboxProps) {
   const [open, setOpen] = React.useState(false)
   const [selected, setSelected] = React.useState<
@@ -146,11 +148,12 @@ export function ModelCombobox({
           className="h-8 w-8"
           onClick={handleBatteryClick}
           aria-label={`Battery ${batteryState}`}
+          disabled={disabled}
         >
           <BatteryIcon className="h-4 w-4" />
         </Button>
       )}
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover open={disabled ? false : open} onOpenChange={disabled ? undefined : setOpen}>
         <PopoverTrigger asChild>
           <Button
             type="button"
@@ -158,6 +161,7 @@ export function ModelCombobox({
             role="combobox"
             aria-expanded={open}
             className={cn("max-w-48 flex items-center text-xs", className)}
+            disabled={disabled}
           >
             {showWarning && (
               <AlertTriangle

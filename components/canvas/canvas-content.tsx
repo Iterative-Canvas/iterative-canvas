@@ -3,6 +3,7 @@
 import { useCallback, useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { Response } from "@/components/ai-elements/response"
+import { useGenerationToasts } from "@/hooks/use-generation-toasts"
 import {
   PromptInput as AIPromptInput,
   PromptInputTextarea,
@@ -20,7 +21,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { SplitButton } from "@/components/split-button"
 import { RefreshCw, PencilIcon, XIcon, CheckIcon } from "lucide-react"
-import { usePreloadedQuery, useMutation } from "convex/react"
+import { usePreloadedQuery, useMutation, useQuery } from "convex/react"
 import { Preloaded } from "convex/react"
 import { api } from "@/convex/_generated/api"
 
@@ -40,23 +41,32 @@ export function CanvasContent({
     ? usePreloadedQuery(preloadedCanvasVersion)
     : null
 
-  const response = canvasVersion?.response
-  const hasResponse = response && response.trim().length > 0
-  const displayContent = hasResponse ? response : PLACEHOLDER_TEXT
-
   const versionId = canvasVersion?._id
 
-  const [content, setContent] = useState(displayContent)
-  const [draft, setDraft] = useState(content)
+  // Use the streaming response query for real-time updates during generation
+  const streamingResponse = useQuery(
+    api.public.getCanvasVersionResponse,
+    versionId ? { versionId } : "skip"
+  )
+
+  // Determine display content based on streaming state
+  const isGenerating = streamingResponse?.status === "generating"
+  const responseContent = streamingResponse?.content ?? canvasVersion?.response ?? ""
+  const hasResponse = responseContent.trim().length > 0
+  const displayContent = hasResponse ? responseContent : PLACEHOLDER_TEXT
+
+  // Show toasts for retry/error states
+  useGenerationToasts(streamingResponse ?? null)
+
+  const [draft, setDraft] = useState(displayContent)
   const [isEditing, setIsEditing] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const updateResponse = useMutation(api.public.updateCanvasVersionResponse)
 
-  // Update content when response changes from the database
+  // Update draft when response changes from the database (and not editing)
   useEffect(() => {
     if (!isEditing) {
-      setContent(displayContent)
       setDraft(displayContent)
     }
   }, [displayContent, isEditing])
@@ -88,7 +98,6 @@ export function CanvasContent({
       setIsSubmitting(true)
       try {
         await submitToBackend(draft, skip)
-        setContent(draft)
         setIsEditing(false)
       } catch (error) {
         console.error("Failed to update canvas response:", error)
@@ -125,7 +134,10 @@ export function CanvasContent({
             />
           ) : (
             <div className="p-4">
-              <Response>{content}</Response>
+              <Response>{displayContent}</Response>
+              {isGenerating && (
+                <span className="inline-block ml-1 w-2 h-4 bg-current animate-pulse" />
+              )}
             </div>
           )}
         </div>
@@ -167,6 +179,7 @@ export function CanvasContent({
                   setDraft(displayContent)
                   setIsEditing(true)
                 }}
+                disabled={isGenerating}
                 aria-label="Edit"
               >
                 <PencilIcon size={16} />
