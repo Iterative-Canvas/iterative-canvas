@@ -3,7 +3,7 @@
 import { internalAction } from "../_generated/server"
 import { internal } from "../_generated/api"
 import { gateway } from "@ai-sdk/gateway"
-import { generateObject } from "ai"
+import { generateText, Output } from "ai"
 import { z } from "zod"
 import { v } from "convex/values"
 
@@ -102,30 +102,30 @@ export const runSingleEval = internalAction({
       const model = gateway(evalDef.modelId)
 
       if (evalDef.type === "pass_fail") {
-        const result = await generateObject({
+        const { output } = await generateText({
           model,
-          schema: PassFailResultSchema,
           prompt: buildEvalPrompt(evalDef.eval, response, "pass_fail"),
+          output: Output.object({ schema: PassFailResultSchema }),
         })
 
         await ctx.runMutation(internal.internal.mutations.updateEvalResult, {
           evalId,
-          score: result.object.passed ? 1 : 0,
-          explanation: result.object.explanation,
+          score: output.passed ? 1 : 0,
+          explanation: output.explanation,
           status: "complete",
         })
       } else {
         // subjective
-        const result = await generateObject({
+        const { output } = await generateText({
           model,
-          schema: SubjectiveResultSchema,
           prompt: buildEvalPrompt(evalDef.eval, response, "subjective"),
+          output: Output.object({ schema: SubjectiveResultSchema }),
         })
 
         await ctx.runMutation(internal.internal.mutations.updateEvalResult, {
           evalId,
-          score: result.object.score,
-          explanation: result.object.explanation,
+          score: output.score,
+          explanation: output.explanation,
           status: "complete",
         })
       }

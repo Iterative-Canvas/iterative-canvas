@@ -760,12 +760,12 @@ export const submitPrompt = mutation({
 
     // Store workflow reference (as string for database storage)
     await ctx.db.patch(versionId, {
-      activeWorkflowId: workflowId as unknown as string,
+      activeWorkflowId: workflowId,
     })
 
     await upsertCanvasUpdatedTime(ctx, version.canvasId)
 
-    return { workflowId: workflowId as unknown as string }
+    return { workflowId: workflowId }
   },
 })
 
@@ -972,6 +972,7 @@ export const runEvals = mutation({
   args: {
     versionId: v.id("canvasVersions"),
   },
+  returns: v.null(),
   handler: async (ctx, { versionId }) => {
     const userId = await getAuthUserId(ctx)
     if (!userId) throw new Error("Not authenticated")
@@ -1027,9 +1028,10 @@ export const runEvals = mutation({
     }
 
     // Mark evals as running with a temporary workflow marker
+    const temporaryWorkflowId: WorkflowId = ("eval-run-" + Date.now()) as WorkflowId
     await ctx.db.patch(versionId, {
       evalsStatus: "running",
-      activeWorkflowId: "eval-run-" + Date.now(),
+      activeWorkflowId: temporaryWorkflowId,
     })
 
     // Schedule eval runs - each eval will check if it's the last to complete

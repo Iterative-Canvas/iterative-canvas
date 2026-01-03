@@ -10,6 +10,7 @@ export const workflow = new WorkflowManager(components.workflow, {
       base: 2,
     },
     retryActionsByDefault: true,
+    // TODO: Consider making this configurable in the user settings
     // Reasonable parallelism for running multiple evals concurrently
     maxParallelism: 10,
   },

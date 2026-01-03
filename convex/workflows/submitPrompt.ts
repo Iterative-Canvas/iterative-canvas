@@ -99,7 +99,7 @@ export const submitPromptWorkflow = workflow.define({
       ctx.runAction(
         internal.actions.runSingleEval.runSingleEval,
         {
-          evalId: evalDef._id as Id<"evals">,
+          evalId: evalDef._id,
           response: versionData.response!,
         },
         { retry: true }

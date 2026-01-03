@@ -180,11 +180,9 @@ const GlobalResultIndicator = ({
   const thresholdPercent = (successThreshold * 100).toFixed(0)
   const reasoning = isSuccessful
     ? `Success! Aggregate score of ${scorePercent}% meets the ${thresholdPercent}% threshold.`
-    : `Failed. Aggregate score of ${scorePercent}% is below the ${thresholdPercent}% threshold${
-        aggregateScore >= successThreshold
-          ? ", or a required eval did not pass."
-          : "."
-      }`
+    : aggregateScore >= successThreshold
+        ? `Failed. Aggregate score of ${scorePercent}% meets the ${thresholdPercent}% threshold, but a required eval did not pass.`
+        : `Failed. Aggregate score of ${scorePercent}% is below the ${thresholdPercent}% threshold.`
 
   // Has result - show with tooltip
   return (

@@ -401,14 +401,14 @@ export const onWorkflowComplete = internalMutation({
   args: {
     workflowId: vWorkflowId,
     result: vResultValidator,
-    context: v.any(),
+    context: v.object({ versionId: v.id("canvasVersions") }),
   },
   returns: v.null(),
   handler: async (ctx, { result, context }) => {
-    const { versionId } = context as { versionId: string }
+    const { versionId } = context
 
     // Clear the active workflow reference
-    await ctx.db.patch(versionId as any, {
+    await ctx.db.patch(versionId, {
       activeWorkflowId: undefined,
     })
 
