@@ -17,7 +17,6 @@ Note: Two sparkle options for evals... - Improve existing evals - Generate evals
 
 ---
 
-- shimmer overlay is too strong / better animation while generating
 - implement pseudo structured responses to patch old models like gpt-3.5-turbo
 - clear/reset state button
 - change the default models and add a user settings page

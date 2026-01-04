@@ -690,8 +690,11 @@ export const submitPrompt = mutation({
     // This allows the UI to display the previous response while waiting
     // for the first chunk of the new response to arrive. The `response`
     // field will be overwritten by `finalizeResponse` when generation completes.
+    // NOTE: We set responseStatus to "generating" immediately (not "idle")
+    // so the UI can show the shimmer/loading state right away without
+    // waiting for the workflow action to update the status.
     await ctx.db.patch(versionId, {
-      responseStatus: "idle",
+      responseStatus: "generating",
       responseError: undefined,
       responseErrorAt: undefined,
       responseCompletedAt: undefined,
