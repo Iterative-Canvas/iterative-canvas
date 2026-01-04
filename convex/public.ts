@@ -593,7 +593,7 @@ export const updateCanvasVersionResponse = mutation({
       responseModifiedAt: Date.now(),
     })
 
-    // If not skipping evals and there's a response to evaluate, run evals
+    // If not skipping evals and there's a response to evaluate, run evals via workflow
     if (skip !== "evals" && response && response.trim().length > 0) {
       // Get all evals for this version
       const evals = await ctx.db
@@ -602,50 +602,32 @@ export const updateCanvasVersionResponse = mutation({
         .collect()
 
       // Filter to evals that have criteria defined
-      const evalsToRun = evals.filter((e) => e.eval && e.eval.trim().length > 0)
+      const evalsWithCriteria = evals.filter(
+        (e) => e.eval && e.eval.trim().length > 0
+      )
 
       // If no evals to run, just mark as complete
-      if (evalsToRun.length === 0) {
+      if (evalsWithCriteria.length === 0) {
         await ctx.db.patch(versionId, {
           evalsStatus: "complete",
           evalsCompletedAt: Date.now(),
         })
       } else {
-        // Reset eval states
+        // Start the RunEvalsWorkflow
+        const workflowId: WorkflowId = await workflow.start(
+          ctx,
+          internal.workflows.runEvals.runEvalsWorkflow,
+          { versionId, response },
+          {
+            onComplete: internal.internal.mutations.onWorkflowComplete,
+            context: { versionId },
+          }
+        )
+
+        // Store workflow reference
         await ctx.db.patch(versionId, {
-          evalsStatus: "idle",
-          evalsCompletedAt: undefined,
-          aggregateScore: undefined,
-          isSuccessful: undefined,
+          activeWorkflowId: workflowId,
         })
-
-        for (const evalRecord of evals) {
-          await ctx.db.patch(evalRecord._id, {
-            status: "idle",
-            error: undefined,
-            score: undefined,
-            explanation: undefined,
-            completedAt: undefined,
-          })
-        }
-
-        // Mark evals as running with a temporary workflow marker
-        await ctx.db.patch(versionId, {
-          evalsStatus: "running",
-          activeWorkflowId: "manual-edit-eval-" + Date.now(),
-        })
-
-        // Schedule eval runs
-        for (const evalDef of evalsToRun) {
-          await ctx.scheduler.runAfter(
-            0,
-            internal.actions.runSingleEval.runSingleEval,
-            {
-              evalId: evalDef._id,
-              response: response,
-            }
-          )
-        }
       }
     }
 
@@ -840,9 +822,14 @@ export const cancelGeneration = mutation({
       throw new Error("No generation in progress to cancel")
     }
 
-    // Signal cancellation - the generateResponse action will check this
+    // Signal cancellation and immediately clear workflow state
+    // This makes the UI (including evals module) responsive right away
+    // The generateResponse action will still complete gracefully in the background
     await ctx.db.patch(versionId, {
       generationCancelledAt: Date.now(),
+      activeWorkflowId: undefined,
+      // Reset evals status to idle since we won't be running evals after cancellation
+      evalsStatus: "idle",
     })
 
     return null
@@ -907,6 +894,10 @@ export const getCanvasVersionResponse = query({
 /**
  * Run a single eval against the current response.
  * Useful for testing or re-running a specific eval.
+ *
+ * NOTE: This preserves the existing score/explanation while running.
+ * The old result is only overwritten when the new run completes successfully.
+ * If the new run fails and there was an existing score, it will be recovered.
  */
 export const runSingleEvalManually = mutation({
   args: {
@@ -934,18 +925,17 @@ export const runSingleEvalManually = mutation({
       throw new Error("Cannot run eval while a workflow or eval run is in progress")
     }
 
-    // Reset this eval's status
-    await ctx.db.patch(evalId, {
-      status: "idle",
-      error: undefined,
-      score: undefined,
-      explanation: undefined,
-      completedAt: undefined,
-    })
-
-    // Mark eval as running
+    // Mark eval as running - preserving existing score/explanation
+    // The old result will only be overwritten when the new run completes
     await ctx.db.patch(evalId, {
       status: "running",
+      error: undefined, // Clear any previous error
+    })
+
+    // Set aggregate to indeterminate since an eval is now running
+    await ctx.db.patch(version._id, {
+      aggregateScore: undefined,
+      isSuccessful: undefined,
     })
 
     // Schedule the eval action
@@ -967,6 +957,11 @@ export const runSingleEvalManually = mutation({
 /**
  * Run all evals against the current response (without regenerating the response).
  * Useful for re-running evals after manual response edits.
+ *
+ * This starts the RunEvalsWorkflow, which:
+ * - Marks all evals as running (preserving existing scores)
+ * - Runs all eval actions in parallel with retry
+ * - Computes aggregate when all evals settle
  */
 export const runEvals = mutation({
   args: {
@@ -991,34 +986,18 @@ export const runEvals = mutation({
       throw new Error("A workflow is already running for this version")
     }
 
-    // Reset eval states
-    await ctx.db.patch(versionId, {
-      evalsStatus: "idle",
-      evalsCompletedAt: undefined,
-      aggregateScore: undefined,
-      isSuccessful: undefined,
-    })
-
+    // Check if there are any evals with criteria to run
     const evals = await ctx.db
       .query("evals")
       .withIndex("canvasVersionId", (q) => q.eq("canvasVersionId", versionId))
       .collect()
 
-    for (const evalRecord of evals) {
-      await ctx.db.patch(evalRecord._id, {
-        status: "idle",
-        error: undefined,
-        score: undefined,
-        explanation: undefined,
-        completedAt: undefined,
-      })
-    }
-
-    // Filter to evals that have criteria defined
-    const evalsToRun = evals.filter((e) => e.eval && e.eval.trim().length > 0)
+    const evalsWithCriteria = evals.filter(
+      (e) => e.eval && e.eval.trim().length > 0
+    )
 
     // If no evals to run, mark as complete immediately
-    if (evalsToRun.length === 0) {
+    if (evalsWithCriteria.length === 0) {
       await ctx.db.patch(versionId, {
         evalsStatus: "complete",
         evalsCompletedAt: Date.now(),
@@ -1027,25 +1006,21 @@ export const runEvals = mutation({
       return null
     }
 
-    // Mark evals as running with a temporary workflow marker
-    const temporaryWorkflowId: WorkflowId = ("eval-run-" + Date.now()) as WorkflowId
-    await ctx.db.patch(versionId, {
-      evalsStatus: "running",
-      activeWorkflowId: temporaryWorkflowId,
-    })
+    // Start the RunEvalsWorkflow
+    const workflowId: WorkflowId = await workflow.start(
+      ctx,
+      internal.workflows.runEvals.runEvalsWorkflow,
+      { versionId, response: version.response },
+      {
+        onComplete: internal.internal.mutations.onWorkflowComplete,
+        context: { versionId },
+      }
+    )
 
-    // Schedule eval runs - each eval will check if it's the last to complete
-    // and will compute the aggregate + clear activeWorkflowId when all are done
-    for (const evalDef of evalsToRun) {
-      await ctx.scheduler.runAfter(
-        0,
-        internal.actions.runSingleEval.runSingleEval,
-        {
-          evalId: evalDef._id,
-          response: version.response,
-        }
-      )
-    }
+    // Store workflow reference
+    await ctx.db.patch(versionId, {
+      activeWorkflowId: workflowId,
+    })
 
     await upsertCanvasUpdatedTime(ctx, version.canvasId)
 

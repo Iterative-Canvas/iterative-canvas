@@ -55,6 +55,11 @@ export function CanvasContent({
   const hasResponse = responseContent.trim().length > 0
   const displayContent = hasResponse ? responseContent : PLACEHOLDER_TEXT
 
+  // Detect if we're waiting for the first chunk (showing old response with shimmer)
+  // This happens when generating but the content equals the old cached response
+  const isWaitingForFirstChunk =
+    isGenerating && responseContent === (canvasVersion?.response ?? "")
+
   // Show toasts for retry/error states
   useGenerationToasts(streamingResponse ?? null)
 
@@ -134,10 +139,7 @@ export function CanvasContent({
             />
           ) : (
             <div className="p-4">
-              <Response>{displayContent}</Response>
-              {isGenerating && (
-                <span className="inline-block ml-1 w-2 h-4 bg-current animate-pulse" />
-              )}
+              <Response shimmer={isWaitingForFirstChunk}>{displayContent}</Response>
             </div>
           )}
         </div>

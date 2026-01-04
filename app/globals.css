@@ -193,6 +193,16 @@
     animation: ellipsis 1s steps(4, end) infinite;
   }
 
+  @keyframes streamdown-shimmer {
+    0%   { background-position: 115% 0; }
+    100% { background-position: -115% 0; }
+  }
+
+  .animate-streamdown-shimmer {
+    animation: streamdown-shimmer 4s ease-in-out infinite;
+    will-change: background-position;
+  }
+
   /* Hides scrollbars but keeps scrolling functional */
   .scrollbars-hidden {
     -ms-overflow-style: none; /* IE and old Edge */

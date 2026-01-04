@@ -118,11 +118,21 @@ export const updateResponseStatus = internalMutation({
 
 /**
  * Consolidate response chunks into the final response field.
+ * If there are no chunks (e.g., early cancellation), preserve the existing response.
+ *
+ * When prepareEvals is true and there's a successful response that wasn't cancelled,
+ * this also marks evals as running immediately for faster UI feedback.
  */
 export const finalizeResponse = internalMutation({
-  args: { versionId: v.id("canvasVersions") },
+  args: {
+    versionId: v.id("canvasVersions"),
+    prepareEvals: v.optional(v.boolean()),
+  },
   returns: v.null(),
-  handler: async (ctx, { versionId }) => {
+  handler: async (ctx, { versionId, prepareEvals }) => {
+    const version = await ctx.db.get(versionId)
+    if (!version) throw new Error(`Version ${versionId} not found`)
+
     // Get all chunks in order
     const chunks = await ctx.db
       .query("responseChunks")
@@ -135,16 +145,52 @@ export const finalizeResponse = internalMutation({
     chunks.sort((a, b) => a.chunkIndex - b.chunkIndex)
     const fullResponse = chunks.map((c) => c.content).join("")
 
-    // Update the version with consolidated response
-    // Clear any transient errors from retry attempts
-    await ctx.db.patch(versionId, {
-      response: fullResponse,
+    // If there are no chunks (early cancellation), preserve the existing response
+    // Only update the response if we actually have new content
+    const updates: {
+      response?: string
+      responseStatus: "complete"
+      responseCompletedAt: number
+      responseModifiedAt?: number
+      responseError: undefined
+      responseErrorAt: undefined
+      evalsStatus?: "running"
+    } = {
       responseStatus: "complete",
       responseCompletedAt: Date.now(),
-      responseModifiedAt: Date.now(),
       responseError: undefined,
       responseErrorAt: undefined,
-    })
+    }
+
+    if (fullResponse.length > 0) {
+      updates.response = fullResponse
+      updates.responseModifiedAt = Date.now()
+    }
+
+    // If prepareEvals is requested and we have a response and weren't cancelled,
+    // mark evals as running for faster UI feedback
+    const wasCancelled = version.generationCancelledAt !== undefined
+    const hasResponse = fullResponse.length > 0 || (version.response && version.response.length > 0)
+
+    if (prepareEvals && hasResponse && !wasCancelled) {
+      updates.evalsStatus = "running"
+
+      // Also mark individual evals as running
+      const evals = await ctx.db
+        .query("evals")
+        .withIndex("canvasVersionId", (q) => q.eq("canvasVersionId", versionId))
+        .collect()
+
+      const evalsWithCriteria = evals.filter(
+        (e) => e.eval && e.eval.trim().length > 0
+      )
+
+      for (const evalRecord of evalsWithCriteria) {
+        await ctx.db.patch(evalRecord._id, { status: "running" })
+      }
+    }
+
+    await ctx.db.patch(versionId, updates)
 
     return null
   },
@@ -183,6 +229,7 @@ export const updateEvalsStatus = internalMutation({
 
 /**
  * Update an individual eval's status (for marking as running).
+ * NOTE: This preserves existing score/explanation - only updates status.
  */
 export const updateEvalStatus = internalMutation({
   args: {
@@ -202,9 +249,76 @@ export const updateEvalStatus = internalMutation({
 })
 
 /**
+ * Mark all evals for a version as running (preserving scores).
+ * Used at the start of RunEvalsWorkflow to indicate evals are in progress.
+ */
+export const markEvalsAsRunning = internalMutation({
+  args: {
+    versionId: v.id("canvasVersions"),
+  },
+  returns: v.array(
+    v.object({
+      _id: v.id("evals"),
+      eval: v.optional(v.string()),
+      modelId: v.optional(v.string()),
+      type: v.union(v.literal("pass_fail"), v.literal("subjective")),
+      isRequired: v.boolean(),
+      weight: v.number(),
+      threshold: v.optional(v.number()),
+    })
+  ),
+  handler: async (ctx, { versionId }) => {
+    const evals = await ctx.db
+      .query("evals")
+      .withIndex("canvasVersionId", (q) => q.eq("canvasVersionId", versionId))
+      .collect()
+
+    // Filter to evals with criteria and mark them as running
+    const evalsWithCriteria = evals.filter(
+      (e) => e.eval && e.eval.trim().length > 0
+    )
+
+    for (const evalRecord of evalsWithCriteria) {
+      // Only update status to running - preserve score/explanation
+      await ctx.db.patch(evalRecord._id, { status: "running" })
+    }
+
+    // Resolve model IDs and return
+    const result = await Promise.all(
+      evalsWithCriteria.map(async (e) => {
+        let modelId: string | undefined
+        if (e.modelId) {
+          const model = await ctx.db.get(e.modelId)
+          modelId = model?.modelId
+        }
+        return {
+          _id: e._id,
+          eval: e.eval,
+          modelId,
+          type: e.type,
+          isRequired: e.isRequired,
+          weight: e.weight,
+          threshold: e.threshold,
+        }
+      })
+    )
+
+    return result
+  },
+})
+
+/**
  * Update an individual eval's result after execution.
- * When an eval completes, check if all evals for that version are done
+ * When an eval completes, check if all evals for that version are "settled"
  * and if so, compute the aggregate score.
+ *
+ * An eval is "settled" when: status === "complete" AND score !== undefined
+ * An eval is "unsettled" when:
+ *   - status === "running", OR
+ *   - status === "idle" with score === undefined (never run), OR
+ *   - status === "error" with score === undefined (failed with no prior result)
+ *
+ * If any eval is unsettled, aggregate is set to undefined (indeterminate).
  */
 export const updateEvalResult = internalMutation({
   args: {
@@ -241,78 +355,90 @@ export const updateEvalResult = internalMutation({
 
     await ctx.db.patch(evalId, updates)
 
-    // If this eval just completed, check if all evals for this version are done
+    // If this eval just completed, check if all evals for this version are settled
     if (status === "complete" || status === "error") {
       const version = await ctx.db.get(evalRecord.canvasVersionId)
-      if (version?.evalsStatus === "running") {
-        // Get all evals for this version
-        const allEvals = await ctx.db
-          .query("evals")
-          .withIndex("canvasVersionId", (q) =>
-            q.eq("canvasVersionId", evalRecord.canvasVersionId)
-          )
-          .collect()
+      if (!version) return null
 
-        // Check if all evals with criteria are complete (not running or idle)
-        const evalsWithCriteria = allEvals.filter(
-          (e) => e.eval && e.eval.trim().length > 0
+      // Get all evals for this version
+      const allEvals = await ctx.db
+        .query("evals")
+        .withIndex("canvasVersionId", (q) =>
+          q.eq("canvasVersionId", evalRecord.canvasVersionId)
         )
-        const allComplete = evalsWithCriteria.every(
-          (e) => e.status === "complete" || e.status === "error"
-        )
+        .collect()
 
-        if (allComplete) {
-          // All evals done - compute aggregate score
-          // This will also clear activeWorkflowId
-          const completedEvals = evalsWithCriteria.filter(
-            (e) => e.status === "complete" && e.score !== undefined
-          )
+      // Filter to evals with criteria defined
+      const evalsWithCriteria = allEvals.filter(
+        (e) => e.eval && e.eval.trim().length > 0
+      )
 
-          if (completedEvals.length === 0) {
-            await ctx.db.patch(evalRecord.canvasVersionId, {
-              evalsStatus: "complete",
-              evalsCompletedAt: Date.now(),
-              aggregateScore: undefined,
-              isSuccessful: undefined,
-              activeWorkflowId: undefined,
-            })
-          } else {
-            // Calculate weighted average
-            let totalWeight = 0
-            let weightedSum = 0
+      // Check if all evals are "settled"
+      // Settled: status === "complete" AND score !== undefined
+      const isSettled = (e: (typeof evalsWithCriteria)[0]) =>
+        e.status === "complete" && e.score !== undefined
 
-            for (const e of completedEvals) {
-              totalWeight += e.weight
-              weightedSum += e.weight * e.score!
-            }
+      const allSettled = evalsWithCriteria.every(isSettled)
 
-            const aggregateScore =
-              totalWeight > 0 ? weightedSum / totalWeight : 0
+      if (allSettled) {
+        // All evals settled - compute aggregate score
+        const settledEvals = evalsWithCriteria // All are settled at this point
 
-            // Check if all required evals passed
-            const requiredEvals = evalsWithCriteria.filter((e) => e.isRequired)
-            const allRequiredPassed = requiredEvals.every((e) => {
-              if (e.status !== "complete" || e.score === undefined) return false
-              if (e.type === "pass_fail") {
-                return e.score === 1
-              } else {
-                const threshold = e.threshold ?? 0.5
-                return e.score >= threshold
-              }
-            })
+        if (settledEvals.length === 0) {
+          await ctx.db.patch(evalRecord.canvasVersionId, {
+            evalsStatus: "complete",
+            evalsCompletedAt: Date.now(),
+            aggregateScore: undefined,
+            isSuccessful: undefined,
+            activeWorkflowId: undefined,
+          })
+        } else {
+          // Calculate weighted average
+          let totalWeight = 0
+          let weightedSum = 0
 
-            const successThreshold = version.successThreshold ?? 0.7
-            const isSuccessful =
-              aggregateScore >= successThreshold && allRequiredPassed
-
-            await ctx.db.patch(evalRecord.canvasVersionId, {
-              evalsStatus: "complete",
-              evalsCompletedAt: Date.now(),
-              aggregateScore,
-              isSuccessful,
-              activeWorkflowId: undefined,
-            })
+          for (const e of settledEvals) {
+            totalWeight += e.weight
+            weightedSum += e.weight * e.score!
           }
+
+          const aggregateScore =
+            totalWeight > 0 ? weightedSum / totalWeight : 0
+
+          // Check if all required evals passed
+          const requiredEvals = evalsWithCriteria.filter((e) => e.isRequired)
+          const allRequiredPassed = requiredEvals.every((e) => {
+            if (e.score === undefined) return false
+            if (e.type === "pass_fail") {
+              return e.score === 1
+            } else {
+              const threshold = e.threshold ?? 0.5
+              return e.score >= threshold
+            }
+          })
+
+          // TODO: The default value of 0.8 is also duplicated on the backend.
+          // This should be consolidated into a single source of truth.
+          const successThreshold = version.successThreshold ?? 0.8
+          const isSuccessful =
+            aggregateScore >= successThreshold && allRequiredPassed
+
+          await ctx.db.patch(evalRecord.canvasVersionId, {
+            evalsStatus: "complete",
+            evalsCompletedAt: Date.now(),
+            aggregateScore,
+            isSuccessful,
+            activeWorkflowId: undefined,
+          })
+        }
+      } else {
+        // Some evals are unsettled - set aggregate to indeterminate
+        // Only update if we're in a running state (to avoid clobbering during idle)
+        if (version.evalsStatus === "running") {
+          await ctx.db.patch(evalRecord.canvasVersionId, {
+            aggregateScore: undefined,
+            isSuccessful: undefined,
+          })
         }
       }
     }
@@ -323,6 +449,8 @@ export const updateEvalResult = internalMutation({
 
 /**
  * Compute the aggregate score from all evals and determine overall success.
+ * Only computes aggregate if all evals are "settled" (complete with score).
+ * If any eval is unsettled, sets aggregate to undefined (indeterminate).
  */
 export const computeAggregateScore = internalMutation({
   args: { versionId: v.id("canvasVersions") },
@@ -336,18 +464,35 @@ export const computeAggregateScore = internalMutation({
       .withIndex("canvasVersionId", (q) => q.eq("canvasVersionId", versionId))
       .collect()
 
-    // Filter to completed evals with scores
-    const completedEvals = evals.filter(
-      (e) => e.status === "complete" && e.score !== undefined
+    // Filter to evals with criteria defined
+    const evalsWithCriteria = evals.filter(
+      (e) => e.eval && e.eval.trim().length > 0
     )
 
-    if (completedEvals.length === 0) {
+    // Check if all evals are "settled" (complete with score)
+    const isSettled = (e: (typeof evalsWithCriteria)[0]) =>
+      e.status === "complete" && e.score !== undefined
+
+    const allSettled = evalsWithCriteria.every(isSettled)
+
+    if (!allSettled) {
+      // Some evals are unsettled - set aggregate to indeterminate
+      await ctx.db.patch(versionId, {
+        aggregateScore: undefined,
+        isSuccessful: undefined,
+        activeWorkflowId: undefined,
+      })
+      return null
+    }
+
+    // All evals are settled - compute aggregate
+    if (evalsWithCriteria.length === 0) {
       await ctx.db.patch(versionId, {
         evalsStatus: "complete",
         evalsCompletedAt: Date.now(),
         aggregateScore: undefined,
         isSuccessful: undefined,
-        activeWorkflowId: undefined, // Clear manual eval run marker
+        activeWorkflowId: undefined,
       })
       return null
     }
@@ -356,7 +501,7 @@ export const computeAggregateScore = internalMutation({
     let totalWeight = 0
     let weightedSum = 0
 
-    for (const evalRecord of completedEvals) {
+    for (const evalRecord of evalsWithCriteria) {
       const weight = evalRecord.weight
       const score = evalRecord.score!
       totalWeight += weight
@@ -366,9 +511,9 @@ export const computeAggregateScore = internalMutation({
     const aggregateScore = totalWeight > 0 ? weightedSum / totalWeight : 0
 
     // Check if all required evals passed
-    const requiredEvals = evals.filter((e) => e.isRequired)
+    const requiredEvals = evalsWithCriteria.filter((e) => e.isRequired)
     const allRequiredPassed = requiredEvals.every((e) => {
-      if (e.status !== "complete" || e.score === undefined) return false
+      if (e.score === undefined) return false
       if (e.type === "pass_fail") {
         return e.score === 1
       } else {
@@ -387,7 +532,7 @@ export const computeAggregateScore = internalMutation({
       evalsCompletedAt: Date.now(),
       aggregateScore,
       isSuccessful,
-      activeWorkflowId: undefined, // Clear manual eval run marker
+      activeWorkflowId: undefined,
     })
 
     return null

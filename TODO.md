@@ -14,3 +14,15 @@ Note: Make the prompt submit button a split-button with a secondary option of `S
 Note: Add a new user setting: `Automatically run evals after generating, refining, or manually editing the canvas?`
 Note: Restrict evals to models that support structured outputs
 Note: Two sparkle options for evals... - Improve existing evals - Generate evals from prompt
+
+---
+
+- shimmer overlay is too strong / better animation while generating
+- implement pseudo structured responses to patch old models like gpt-3.5-turbo
+- clear/reset state button
+- change the default models and add a user settings page
+- attempt to alleviate race conditions
+- re-evaluate exactly when modules should or should not be disabled
+- update default models
+- don't disable evals if clicking "submit w/o evals"
+- delete chunks right away

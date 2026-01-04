@@ -114,7 +114,22 @@ export const checkGenerationCancelled = internalQuery({
 })
 
 /**
+ * Get the response for a canvas version.
+ * Used by SubmitPromptWorkflow to pass response to RunEvalsWorkflow.
+ */
+export const getVersionResponse = internalQuery({
+  args: { versionId: v.id("canvasVersions") },
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx, { versionId }): Promise<string | null> => {
+    const version = await ctx.db.get(versionId)
+    if (!version) throw new Error(`Version ${versionId} not found`)
+    return version.response ?? null
+  },
+})
+
+/**
  * Get a single eval by ID with its model ID resolved.
+ * Also includes existing score/explanation for error recovery.
  */
 export const getEvalById = internalQuery({
   args: { evalId: v.id("evals") },
@@ -126,6 +141,9 @@ export const getEvalById = internalQuery({
     isRequired: v.boolean(),
     weight: v.number(),
     threshold: v.optional(v.number()),
+    // Include existing score/explanation for error recovery
+    existingScore: v.optional(v.number()),
+    existingExplanation: v.optional(v.string()),
   }),
   handler: async (ctx, { evalId }) => {
     const evalRecord = await ctx.db.get(evalId)
@@ -148,6 +166,8 @@ export const getEvalById = internalQuery({
       isRequired: evalRecord.isRequired,
       weight: evalRecord.weight,
       threshold: evalRecord.threshold,
+      existingScore: evalRecord.score,
+      existingExplanation: evalRecord.explanation,
     }
   },
 })

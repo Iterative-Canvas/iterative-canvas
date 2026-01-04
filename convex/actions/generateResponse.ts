@@ -42,6 +42,7 @@ Provide a thorough, well-structured response that addresses the user's prompt wh
 export const generateResponse = internalAction({
   args: {
     versionId: v.id("canvasVersions"),
+    skipEvals: v.optional(v.boolean()),
   },
   returns: v.object({
     success: v.boolean(),
@@ -49,7 +50,7 @@ export const generateResponse = internalAction({
   }),
   handler: async (
     ctx,
-    { versionId }
+    { versionId, skipEvals }
   ): Promise<{ success: boolean; error?: string }> => {
     // 1. Load version and model info
     const versionData = await ctx.runQuery(
@@ -72,8 +73,43 @@ export const generateResponse = internalAction({
       status: "generating",
     })
 
+    // Set up AbortController for cancellation
+    const abortController = new AbortController()
+    let wasCancelled = false
+    let cancellationCheckInterval: ReturnType<typeof setInterval> | null = null
+
     try {
-      // 4. Stream from LLM
+      // 4. Check for early cancellation before starting the stream
+      const earlyCancelledAt = await ctx.runQuery(
+        internal.internal.queries.checkGenerationCancelled,
+        { versionId }
+      )
+      if (earlyCancelledAt !== null) {
+        console.log("Generation was cancelled before streaming started")
+        await ctx.runMutation(internal.internal.mutations.finalizeResponse, {
+          versionId,
+        })
+        return { success: true }
+      }
+
+      // 5. Start background cancellation polling
+      // This allows cancellation even while waiting for the first chunk from a slow model
+      cancellationCheckInterval = setInterval(async () => {
+        try {
+          const cancelledAt = await ctx.runQuery(
+            internal.internal.queries.checkGenerationCancelled,
+            { versionId }
+          )
+          if (cancelledAt !== null && !wasCancelled) {
+            wasCancelled = true
+            abortController.abort()
+          }
+        } catch {
+          // Ignore errors in background check - we'll catch cancellation in the main loop too
+        }
+      }, CANCELLATION_CHECK_INTERVAL_MS)
+
+      // 6. Stream from LLM with abort signal
       const model = gateway(versionData.modelId)
       const systemPrompt = compileSystemPrompt(versionData.evals)
 
@@ -81,15 +117,14 @@ export const generateResponse = internalAction({
         model,
         ...(systemPrompt && { system: systemPrompt }),
         prompt: versionData.prompt,
+        abortSignal: abortController.signal,
         onError: ({ error }) => console.error("Stream error:", error),
       })
 
-      // 5. Buffer and flush pattern with cancellation checking
+      // 7. Buffer and flush pattern
       let buffer = ""
       let chunkIndex = 0
       let lastFlushTime = Date.now()
-      let lastCancellationCheckTime = Date.now()
-      let wasCancelled = false
 
       const flush = async (force = false) => {
         const now = Date.now()
@@ -110,45 +145,33 @@ export const generateResponse = internalAction({
         }
       }
 
-      const checkCancellation = async (): Promise<boolean> => {
-        const now = Date.now()
-        if (now - lastCancellationCheckTime >= CANCELLATION_CHECK_INTERVAL_MS) {
-          lastCancellationCheckTime = now
-          const cancelledAt = await ctx.runQuery(
-            internal.internal.queries.checkGenerationCancelled,
-            { versionId }
-          )
-          return cancelledAt !== null
-        }
-        return false
-      }
-
       for await (const textPart of result.textStream) {
         buffer += textPart
         await flush()
-
-        // Check for cancellation periodically
-        if (await checkCancellation()) {
-          wasCancelled = true
-          break
-        }
       }
 
-      // 6. Flush remaining buffer
+      // 8. Flush remaining buffer
       await flush(true)
 
-      // 7. Consolidate chunks into final response
-      // This happens whether cancelled or completed normally
+      // 9. Consolidate chunks into final response
+      // Only prepare evals if they will actually run (skipEvals is not true)
       await ctx.runMutation(internal.internal.mutations.finalizeResponse, {
         versionId,
+        prepareEvals: !skipEvals, // Mark evals as running only if they will run
       })
-
-      if (wasCancelled) {
-        console.log("Generation was cancelled by user, partial response saved")
-      }
 
       return { success: true }
     } catch (error) {
+      // Check if this was a cancellation abort
+      if (wasCancelled || abortController.signal.aborted) {
+        console.log("Generation was cancelled by user, saving partial response")
+        // Still finalize whatever we have
+        await ctx.runMutation(internal.internal.mutations.finalizeResponse, {
+          versionId,
+        })
+        return { success: true }
+      }
+
       const message = error instanceof Error ? error.message : "Unknown error"
       console.error("Generation failed:", message)
 
@@ -160,6 +183,11 @@ export const generateResponse = internalAction({
       })
 
       throw error
+    } finally {
+      // Clean up the cancellation check interval
+      if (cancellationCheckInterval) {
+        clearInterval(cancellationCheckInterval)
+      }
     }
   },
 })

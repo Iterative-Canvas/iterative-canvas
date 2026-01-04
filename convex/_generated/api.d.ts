@@ -19,6 +19,8 @@ import type * as internal_queries from "../internal/queries.js";
 import type * as private_ from "../private.js";
 import type * as public_ from "../public.js";
 import type * as workflow from "../workflow.js";
+import type * as workflows_generateResponse from "../workflows/generateResponse.js";
+import type * as workflows_runEvals from "../workflows/runEvals.js";
 import type * as workflows_submitPrompt from "../workflows/submitPrompt.js";
 
 import type {
@@ -39,6 +41,8 @@ declare const fullApi: ApiFromModules<{
   private: typeof private_;
   public: typeof public_;
   workflow: typeof workflow;
+  "workflows/generateResponse": typeof workflows_generateResponse;
+  "workflows/runEvals": typeof workflows_runEvals;
   "workflows/submitPrompt": typeof workflows_submitPrompt;
 }>;
 

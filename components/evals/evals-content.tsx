@@ -145,8 +145,15 @@ const GlobalResultIndicator = ({
   successThreshold,
 }: GlobalResultIndicatorProps) => {
   // Determine result state based on evalsStatus and isSuccessful
-  const hasResult = evalsStatus === "complete" && aggregateScore !== undefined
-  
+  // Show indeterminate (CircleDashed) when:
+  // - evalsStatus is "running" (evals in progress)
+  // - aggregateScore is undefined (no result yet or indeterminate)
+  // - evalsStatus is not "complete"
+  const hasResult =
+    evalsStatus === "complete" &&
+    aggregateScore !== undefined &&
+    isSuccessful !== undefined
+
   let result: "pass" | "fail" | null = null
   if (hasResult) {
     result = isSuccessful ? "pass" : "fail"
@@ -299,8 +306,16 @@ export function EvalsContent({
       // Derive result from backend score
       // For pass_fail: score of 1 = pass, 0 = fail
       // For subjective: score >= threshold = pass
+      //
+      // An eval is considered "indeterminate" (show CircleDashed) when:
+      // - status === "running" (even if there's an existing score preserved)
+      // - status === "complete" but score is undefined (shouldn't happen normally)
+      // - status === "idle" with no score (never run)
       let result: "pass" | "fail" | null = null
-      if (evalRecord.status === "complete" && evalRecord.score !== undefined) {
+      if (
+        evalRecord.status === "complete" &&
+        evalRecord.score !== undefined
+      ) {
         if (evalRecord.type === "pass_fail") {
           result = evalRecord.score === 1 ? "pass" : "fail"
         } else {
@@ -308,6 +323,8 @@ export function EvalsContent({
           result = evalRecord.score >= threshold ? "pass" : "fail"
         }
       }
+      // Note: If status is "running", result stays null (indeterminate)
+      // even if there's a preserved score from a previous run
 
       return {
         id: evalRecord._id,

@@ -62,6 +62,11 @@ Provide a clear, concise explanation for your assessment.`
 
 /**
  * Run a single eval against a response using LLM-as-judge.
+ *
+ * Error recovery semantics:
+ * - On success: overwrite score/explanation, set status to "complete"
+ * - On error with existing score: keep old score, set status to "complete" (recovered)
+ * - On error without existing score: set status to "error"
  */
 export const runSingleEval = internalAction({
   args: {
@@ -76,7 +81,7 @@ export const runSingleEval = internalAction({
     ctx,
     { evalId, response }
   ): Promise<{ success: boolean; error?: string }> => {
-    // 1. Load eval definition
+    // 1. Load eval definition (includes existing score for error recovery)
     const evalDef = await ctx.runQuery(internal.internal.queries.getEvalById, {
       evalId,
     })
@@ -92,7 +97,7 @@ export const runSingleEval = internalAction({
       return { success: true }
     }
 
-    // 2. Mark eval as running
+    // 2. Mark eval as running (note: score/explanation preserved by updateEvalStatus)
     await ctx.runMutation(internal.internal.mutations.updateEvalStatus, {
       evalId,
       status: "running",
@@ -135,13 +140,33 @@ export const runSingleEval = internalAction({
       const message = error instanceof Error ? error.message : "Unknown error"
       console.error(`Error running eval ${evalId}:`, message)
 
-      await ctx.runMutation(internal.internal.mutations.updateEvalResult, {
-        evalId,
-        status: "error",
-        error: message,
-      })
-
-      return { success: false, error: message }
+      // Error recovery: if we have an existing score, keep it and mark as complete
+      // Otherwise, mark as error
+      if (evalDef.existingScore !== undefined) {
+        console.log(
+          `Eval ${evalId} failed but has existing score ${evalDef.existingScore}, recovering`
+        )
+        await ctx.runMutation(internal.internal.mutations.updateEvalResult, {
+          evalId,
+          status: "complete",
+          // Keep existing score and explanation
+          score: evalDef.existingScore,
+          explanation:
+            evalDef.existingExplanation ??
+            `(Previous result retained after error: ${message})`,
+        })
+        // Still return success: false to indicate the eval run itself failed
+        // but the aggregate can still be computed with the recovered score
+        return { success: false, error: message }
+      } else {
+        // No existing score to recover - mark as error
+        await ctx.runMutation(internal.internal.mutations.updateEvalResult, {
+          evalId,
+          status: "error",
+          error: message,
+        })
+        return { success: false, error: message }
+      }
     }
   },
 })
