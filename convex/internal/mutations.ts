@@ -1,4 +1,5 @@
 import { internalMutation } from "../_generated/server"
+import { internal } from "../_generated/api"
 import { v } from "convex/values"
 import { vWorkflowId } from "@convex-dev/workflow"
 
@@ -38,7 +39,8 @@ export const saveResponseChunk = internalMutation({
 })
 
 /**
- * Clear all response chunks for a version before starting new generation.
+ * Clear all response chunks for a version.
+ * Used both before starting new generation (defensive) and after finalization (cleanup).
  */
 export const clearResponseChunks = internalMutation({
   args: { versionId: v.id("canvasVersions") },
@@ -117,11 +119,13 @@ export const updateResponseStatus = internalMutation({
 })
 
 /**
- * Consolidate response chunks into the final response field.
+ * Consolidate response chunks into the final response field and clean up chunks.
  * If there are no chunks (e.g., early cancellation), preserve the existing response.
  *
  * When prepareEvals is true and there's a successful response that wasn't cancelled,
  * this also marks evals as running immediately for faster UI feedback.
+ *
+ * After consolidation, all response chunks are deleted to free up storage.
  */
 export const finalizeResponse = internalMutation({
   args: {
@@ -191,6 +195,11 @@ export const finalizeResponse = internalMutation({
     }
 
     await ctx.db.patch(versionId, updates)
+
+    // Schedule background cleanup of response chunks (non-blocking)
+    await ctx.scheduler.runAfter(0, internal.internal.mutations.clearResponseChunks, {
+      versionId,
+    })
 
     return null
   },
