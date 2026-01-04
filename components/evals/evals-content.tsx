@@ -687,7 +687,7 @@ export function EvalsContent({
       </Card>
       <div className="flex justify-end items-center gap-4">
         <div className="flex items-center gap-2">
-          <Label htmlFor="success-threshold" className="text-xs font-normal">
+          <Label htmlFor="success-threshold" className={cn("text-xs font-normal", isDisabled && "text-muted-foreground")}>
             Success Threshold
           </Label>
           <Input
