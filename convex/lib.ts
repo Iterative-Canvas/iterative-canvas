@@ -1,3 +1,46 @@
+/**
+ * Compile a system prompt that includes eval requirements.
+ * This helps the LLM understand what constraints it should satisfy.
+ *
+ * Used by:
+ * - generateResponse action (for main LLM response generation)
+ * - generateCanvasName action (for auto-naming based on full prompt context)
+ */
+export function compileSystemPrompt(
+  evals: Array<{ eval: string | undefined }>
+): string | undefined {
+  const evalRequirements = evals
+    .filter((e) => e.eval && e.eval.trim().length > 0)
+    .map((e, i) => `${i + 1}. ${e.eval}`)
+
+  if (evalRequirements.length === 0) {
+    return undefined
+  }
+
+  return `You are a helpful assistant. Your response will be evaluated against the following criteria. Please ensure your response satisfies these requirements:
+
+${evalRequirements.join("\n")}
+
+Provide a thorough, well-structured response that addresses the user's prompt while meeting the above criteria.`
+}
+
+/**
+ * Compile the full prompt context (system prompt + user prompt) into a single string.
+ * Useful for scenarios where we need a combined representation (e.g., naming).
+ */
+export function compileFullPromptContext(
+  userPrompt: string,
+  evals: Array<{ eval: string | undefined }>
+): string {
+  const systemPrompt = compileSystemPrompt(evals)
+
+  if (!systemPrompt) {
+    return userPrompt
+  }
+
+  return `[System Context]\n${systemPrompt}\n\n[User Prompt]\n${userPrompt}`
+}
+
 // Could be useful for generating random version names if we ever move to a branching model
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function generateRandomCanvasVersionName() {

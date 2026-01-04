@@ -5,6 +5,7 @@ import { internal } from "../_generated/api"
 import { gateway } from "@ai-sdk/gateway"
 import { streamText } from "ai"
 import { v } from "convex/values"
+import { compileSystemPrompt } from "../lib"
 
 // Buffer settings (from unbreakable-ai-chat pattern)
 // These control how often we flush to the database
@@ -12,28 +13,6 @@ const MIN_CHUNK_SIZE = 20
 const FLUSH_INTERVAL_MS = 200
 // How often to check for cancellation (in milliseconds)
 const CANCELLATION_CHECK_INTERVAL_MS = 500
-
-/**
- * Compile a system prompt that includes eval requirements.
- * This helps the LLM understand what constraints it should satisfy.
- */
-function compileSystemPrompt(
-  evals: Array<{ eval: string | undefined }>
-): string | undefined {
-  const evalRequirements = evals
-    .filter((e) => e.eval && e.eval.trim().length > 0)
-    .map((e, i) => `${i + 1}. ${e.eval}`)
-
-  if (evalRequirements.length === 0) {
-    return undefined
-  }
-
-  return `You are a helpful assistant. Your response will be evaluated against the following criteria. Please ensure your response satisfies these requirements:
-
-${evalRequirements.join("\n")}
-
-Provide a thorough, well-structured response that addresses the user's prompt while meeting the above criteria.`
-}
 
 /**
  * Generate an LLM response with streaming, persisting chunks to the database

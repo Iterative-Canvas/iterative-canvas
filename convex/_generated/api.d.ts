@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as actions_generateCanvasName from "../actions/generateCanvasName.js";
 import type * as actions_generateResponse from "../actions/generateResponse.js";
 import type * as actions_runSingleEval from "../actions/runSingleEval.js";
 import type * as auth from "../auth.js";
@@ -16,6 +17,7 @@ import type * as helpers from "../helpers.js";
 import type * as http from "../http.js";
 import type * as internal_mutations from "../internal/mutations.js";
 import type * as internal_queries from "../internal/queries.js";
+import type * as lib from "../lib.js";
 import type * as private_ from "../private.js";
 import type * as public_ from "../public.js";
 import type * as workflow from "../workflow.js";
@@ -30,6 +32,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "actions/generateCanvasName": typeof actions_generateCanvasName;
   "actions/generateResponse": typeof actions_generateResponse;
   "actions/runSingleEval": typeof actions_runSingleEval;
   auth: typeof auth;
@@ -38,6 +41,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   "internal/mutations": typeof internal_mutations;
   "internal/queries": typeof internal_queries;
+  lib: typeof lib;
   private: typeof private_;
   public: typeof public_;
   workflow: typeof workflow;

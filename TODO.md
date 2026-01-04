@@ -24,4 +24,9 @@ Note: Two sparkle options for evals... - Improve existing evals - Generate evals
 - re-evaluate exactly when modules should or should not be disabled
 - update default models
 - don't disable evals if clicking "submit w/o evals"
-- delete chunks right away
+- add an empty state for the evals list when there are no evals
+- keyboard shortcuts
+- when click on "Add Requirement", focus the textarea
+- review the system prompts
+- migrate actions out of the actions folder so we can remove the "use node" directive
+  - ✖ actions/runSingleEval.ts is in /actions subfolder but has no "use node"; directive. You can now define actions in any folder and indicate they should run in node by adding "use node" directive. /actions is a deprecated way to choose Node.js environment, and we require "use node" for all files within that folder to avoid unexpected errors during the migration. See https://docs.convex.dev/functions/actions for more details

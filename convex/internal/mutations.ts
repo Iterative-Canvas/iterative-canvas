@@ -576,3 +576,29 @@ export const onWorkflowComplete = internalMutation({
   },
 })
 
+/**
+ * Set the name of a canvas (used by auto-name generation).
+ * This is an internal mutation because it's called from an action.
+ */
+export const setCanvasName = internalMutation({
+  args: {
+    canvasId: v.id("canvases"),
+    name: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, { canvasId, name }) => {
+    const canvas = await ctx.db.get(canvasId)
+    if (!canvas) {
+      console.warn(`Canvas ${canvasId} not found when setting name`)
+      return null
+    }
+
+    // Only set the name if it's still undefined (avoid overwriting user edits)
+    if (canvas.name === undefined) {
+      await ctx.db.patch(canvasId, { name })
+    }
+
+    return null
+  },
+})
+

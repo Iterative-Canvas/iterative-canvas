@@ -685,6 +685,22 @@ export const submitPrompt = mutation({
       })
     }
 
+    // Auto-generate canvas name on first submission if canvas has no name
+    // Uses the same compiled prompt context (user prompt + eval requirements)
+    // that's sent for the main LLM response generation.
+    const promptForNaming = prompt ?? version.prompt
+    if (canvas.name === undefined && promptForNaming && promptForNaming.trim().length > 0) {
+      // Schedule the name generation action (fire-and-forget, non-blocking)
+      await ctx.scheduler.runAfter(
+        0,
+        internal.actions.generateCanvasName.generateCanvasName,
+        {
+          canvasId: canvas._id,
+          versionId,
+        }
+      )
+    }
+
     // Reset response/eval state
     // NOTE: We intentionally keep the old `response` field intact here.
     // This allows the UI to display the previous response while waiting
