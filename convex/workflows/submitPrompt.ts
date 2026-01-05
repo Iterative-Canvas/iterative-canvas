@@ -25,7 +25,7 @@ export const submitPromptWorkflow = workflow.define({
     // =========================================================================
     const genResult = await ctx.runWorkflow(
       internal.workflows.generateResponse.generateResponseWorkflow,
-      { versionId, skipEvals }
+      { versionId, skipEvals },
     )
 
     // If generation failed or was cancelled, stop here
@@ -48,7 +48,7 @@ export const submitPromptWorkflow = workflow.define({
     // Note: Evals are already marked as running by finalizeResponse for faster UI feedback
     const response = await ctx.runQuery(
       internal.internal.queries.getVersionResponse,
-      { versionId }
+      { versionId },
     )
 
     if (!response) {

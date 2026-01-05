@@ -51,7 +51,7 @@ export function PromptInput({ preloadedCanvasVersion, className }: Props) {
   // Query the streaming response to detect generation status
   const streamingResponse = useQuery(
     api.public.getCanvasVersionResponse,
-    versionId ? { versionId } : "skip"
+    versionId ? { versionId } : "skip",
   )
   const isGenerating = streamingResponse?.status === "generating"
 

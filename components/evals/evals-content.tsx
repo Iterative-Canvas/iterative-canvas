@@ -171,12 +171,7 @@ const GlobalResultIndicator = ({
   // No result yet - show disabled button without tooltip
   if (!hasResult) {
     return (
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8 mr-4"
-        disabled
-      >
+      <Button variant="ghost" size="icon" className="h-8 w-8 mr-4" disabled>
         {icon}
       </Button>
     )
@@ -188,8 +183,8 @@ const GlobalResultIndicator = ({
   const reasoning = isSuccessful
     ? `Success! Aggregate score of ${scorePercent}% meets the ${thresholdPercent}% threshold.`
     : aggregateScore >= successThreshold
-        ? `Failed. Aggregate score of ${scorePercent}% meets the ${thresholdPercent}% threshold, but a required eval did not pass.`
-        : `Failed. Aggregate score of ${scorePercent}% is below the ${thresholdPercent}% threshold.`
+      ? `Failed. Aggregate score of ${scorePercent}% meets the ${thresholdPercent}% threshold, but a required eval did not pass.`
+      : `Failed. Aggregate score of ${scorePercent}% is below the ${thresholdPercent}% threshold.`
 
   // Has result - show with tooltip
   return (
@@ -254,9 +249,9 @@ export function EvalsContent({
 
   // Derive disabled state from backend - disabled when workflow is active or evals are running
   const isDisabled = Boolean(
-    canvasVersion?.activeWorkflowId || canvasVersion?.evalsStatus === "running"
+    canvasVersion?.activeWorkflowId || canvasVersion?.evalsStatus === "running",
   )
-  
+
   // Derive evals running state from backend
   const isEvalsRunning = canvasVersion?.evalsStatus === "running"
 
@@ -312,10 +307,7 @@ export function EvalsContent({
       // - status === "complete" but score is undefined (shouldn't happen normally)
       // - status === "idle" with no score (never run)
       let result: "pass" | "fail" | null = null
-      if (
-        evalRecord.status === "complete" &&
-        evalRecord.score !== undefined
-      ) {
+      if (evalRecord.status === "complete" && evalRecord.score !== undefined) {
         if (evalRecord.type === "pass_fail") {
           result = evalRecord.score === 1 ? "pass" : "fail"
         } else {
@@ -510,7 +502,7 @@ export function EvalsContent({
         console.error("Failed to run eval:", error)
       }
     },
-    [runSingleEvalManually, isDisabled]
+    [runSingleEvalManually, isDisabled],
   )
 
   return (
@@ -520,174 +512,191 @@ export function EvalsContent({
           {requirements.map((req) => {
             const isEvalRunning = req.status === "running"
             return (
-            <div key={req.id} className="flex flex-col gap-2 -ml-6">
-              <div className="flex">
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  className="h-6 w-6 mt-1 hover:text-red-500"
-                  onClick={() => handleDeleteRequirement(req.id)}
-                  disabled={isDisabled}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-                <div className="flex-1 flex flex-col">
-                  <div className="relative w-full">
-                    <Textarea
-                      placeholder="Enter requirement..."
-                      className={cn(
-                        "text-sm pr-8 resize-none scrollbars-hidden",
-                        req.fitToContent
-                          ? "field-sizing-content overflow-hidden"
-                          : "field-sizing-fixed h-9 overflow-auto",
-                      )}
-                      rows={req.fitToContent ? undefined : 1}
-                      value={req.text}
-                      onChange={(e) =>
-                        handleRequirementChange(req.id, "text", e.target.value)
-                      }
-                      disabled={isDisabled}
-                    />
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      className="absolute top-1 right-1 h-6 w-6 text-primary/30"
-                      onClick={() => toggleFitToContent(req.id)}
-                      title={req.fitToContent ? "Collapse" : "Expand"}
-                    >
-                      {req.fitToContent ? (
-                        <ChevronsDownUp className="h-4 w-4" />
-                      ) : (
-                        <ChevronsUpDown className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                      <div className="flex items-center gap-1.5">
-                        <Label htmlFor={`req-${req.id}`}>Required?</Label>
-                        <Checkbox
-                          id={`req-${req.id}`}
-                          checked={req.required}
-                          onCheckedChange={(checked) =>
-                            handleRequirementChange(
-                              req.id,
-                              "required",
-                              Boolean(checked),
-                            )
-                          }
-                          disabled={isDisabled}
-                        />
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <Label htmlFor={`weight-${req.id}`}>Weight</Label>
-                        <Input
-                          id={`weight-${req.id}`}
-                          type="number"
-                          min="1"
-                          step="1"
-                          value={req.weight}
-                          onChange={(e) =>
-                            handleRequirementChange(
-                              req.id,
-                              "weight",
-                              Number.parseInt(e.target.value),
-                            )
-                          }
-                          className="h-6 w-14 text-xs"
-                          disabled={isDisabled}
-                        />
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <Label>Type</Label>
-                        <Select
-                          value={req.type}
-                          onValueChange={(value: "pass-fail" | "subjective") =>
-                            handleRequirementChange(req.id, "type", value)
-                          }
-                          disabled={isDisabled}
-                        >
-                          <SelectTrigger className="h-6 text-xs w-28">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="pass-fail">Pass/Fail</SelectItem>
-                            <SelectItem value="subjective">
-                              Subjective
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      {req.type === "subjective" && (
+              <div key={req.id} className="flex flex-col gap-2 -ml-6">
+                <div className="flex">
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="h-6 w-6 mt-1 hover:text-red-500"
+                    onClick={() => handleDeleteRequirement(req.id)}
+                    disabled={isDisabled}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                  <div className="flex-1 flex flex-col">
+                    <div className="relative w-full">
+                      <Textarea
+                        placeholder="Enter requirement..."
+                        className={cn(
+                          "text-sm pr-8 resize-none scrollbars-hidden",
+                          req.fitToContent
+                            ? "field-sizing-content overflow-hidden"
+                            : "field-sizing-fixed h-9 overflow-auto",
+                        )}
+                        rows={req.fitToContent ? undefined : 1}
+                        value={req.text}
+                        onChange={(e) =>
+                          handleRequirementChange(
+                            req.id,
+                            "text",
+                            e.target.value,
+                          )
+                        }
+                        disabled={isDisabled}
+                      />
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="absolute top-1 right-1 h-6 w-6 text-primary/30"
+                        onClick={() => toggleFitToContent(req.id)}
+                        title={req.fitToContent ? "Collapse" : "Expand"}
+                      >
+                        {req.fitToContent ? (
+                          <ChevronsDownUp className="h-4 w-4" />
+                        ) : (
+                          <ChevronsUpDown className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
                         <div className="flex items-center gap-1.5">
-                          <Label htmlFor={`threshold-${req.id}`}>
-                            Threshold
-                          </Label>
-                          <Input
-                            id={`threshold-${req.id}`}
-                            type="number"
-                            min="0"
-                            max="1"
-                            step="0.1"
-                            value={req.threshold}
-                            onChange={(e) =>
+                          <Label htmlFor={`req-${req.id}`}>Required?</Label>
+                          <Checkbox
+                            id={`req-${req.id}`}
+                            checked={req.required}
+                            onCheckedChange={(checked) =>
                               handleRequirementChange(
                                 req.id,
-                                "threshold",
-                                Number.parseFloat(e.target.value),
+                                "required",
+                                Boolean(checked),
                               )
                             }
-                            className="h-6 w-16 text-xs"
                             disabled={isDisabled}
                           />
                         </div>
-                      )}
-                      <div className="ml-auto flex items-center gap-1">
-                        <ModelCombobox
-                          value={
-                            req.model ? modelsById.get(req.model) : undefined
-                          }
-                          onChange={(model) =>
-                            handleRequirementChange(req.id, "model", model?._id)
-                          }
-                          availableModels={availableModels}
-                          className="h-6"
-                          disabled={isDisabled}
-                        />
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          disabled={isDisabled || isEvalRunning}
-                          onClick={() => handleRunSingleEval(req.id)}
-                        >
-                          {isEvalRunning ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <Play className="h-3 w-3" />
-                          )}
-                        </Button>
-                        <Separator orientation="vertical" className="h-4" />
-                        <ResultIndicator
-                          result={req.result}
-                          reasoning={req.reasoning}
-                        />
+                        <div className="flex items-center gap-1.5">
+                          <Label htmlFor={`weight-${req.id}`}>Weight</Label>
+                          <Input
+                            id={`weight-${req.id}`}
+                            type="number"
+                            min="1"
+                            step="1"
+                            value={req.weight}
+                            onChange={(e) =>
+                              handleRequirementChange(
+                                req.id,
+                                "weight",
+                                Number.parseInt(e.target.value),
+                              )
+                            }
+                            className="h-6 w-14 text-xs"
+                            disabled={isDisabled}
+                          />
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Label>Type</Label>
+                          <Select
+                            value={req.type}
+                            onValueChange={(
+                              value: "pass-fail" | "subjective",
+                            ) => handleRequirementChange(req.id, "type", value)}
+                            disabled={isDisabled}
+                          >
+                            <SelectTrigger className="h-6 text-xs w-28">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="pass-fail">
+                                Pass/Fail
+                              </SelectItem>
+                              <SelectItem value="subjective">
+                                Subjective
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {req.type === "subjective" && (
+                          <div className="flex items-center gap-1.5">
+                            <Label htmlFor={`threshold-${req.id}`}>
+                              Threshold
+                            </Label>
+                            <Input
+                              id={`threshold-${req.id}`}
+                              type="number"
+                              min="0"
+                              max="1"
+                              step="0.1"
+                              value={req.threshold}
+                              onChange={(e) =>
+                                handleRequirementChange(
+                                  req.id,
+                                  "threshold",
+                                  Number.parseFloat(e.target.value),
+                                )
+                              }
+                              className="h-6 w-16 text-xs"
+                              disabled={isDisabled}
+                            />
+                          </div>
+                        )}
+                        <div className="ml-auto flex items-center gap-1">
+                          <ModelCombobox
+                            value={
+                              req.model ? modelsById.get(req.model) : undefined
+                            }
+                            onChange={(model) =>
+                              handleRequirementChange(
+                                req.id,
+                                "model",
+                                model?._id,
+                              )
+                            }
+                            availableModels={availableModels}
+                            className="h-6"
+                            disabled={isDisabled}
+                          />
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            disabled={isDisabled || isEvalRunning}
+                            onClick={() => handleRunSingleEval(req.id)}
+                          >
+                            {isEvalRunning ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Play className="h-3 w-3" />
+                            )}
+                          </Button>
+                          <Separator orientation="vertical" className="h-4" />
+                          <ResultIndicator
+                            result={req.result}
+                            reasoning={req.reasoning}
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          )})}
+            )
+          })}
           {/* A little hack to keep proper spacing between the last list item and the bottom border of the card container */}
           <div className="h-px" />
         </div>
       </Card>
       <div className="flex justify-end items-center gap-4">
         <div className="flex items-center gap-2">
-          <Label htmlFor="success-threshold" className={cn("text-xs font-normal", isDisabled && "text-muted-foreground")}>
+          <Label
+            htmlFor="success-threshold"
+            className={cn(
+              "text-xs font-normal",
+              isDisabled && "text-muted-foreground",
+            )}
+          >
             Success Threshold
           </Label>
           <Input

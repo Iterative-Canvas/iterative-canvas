@@ -603,7 +603,7 @@ export const updateCanvasVersionResponse = mutation({
 
       // Filter to evals that have criteria defined
       const evalsWithCriteria = evals.filter(
-        (e) => e.eval && e.eval.trim().length > 0
+        (e) => e.eval && e.eval.trim().length > 0,
       )
 
       // If no evals to run, just mark as complete
@@ -621,7 +621,7 @@ export const updateCanvasVersionResponse = mutation({
           {
             onComplete: internal.internal.mutations.onWorkflowComplete,
             context: { versionId },
-          }
+          },
         )
 
         // Store workflow reference
@@ -660,7 +660,7 @@ export const submitPrompt = mutation({
   }),
   handler: async (
     ctx,
-    { versionId, prompt, skipEvals }
+    { versionId, prompt, skipEvals },
   ): Promise<{ workflowId: string }> => {
     const userId = await getAuthUserId(ctx)
     if (!userId) throw new Error("Not authenticated")
@@ -689,7 +689,11 @@ export const submitPrompt = mutation({
     // Uses the same compiled prompt context (user prompt + eval requirements)
     // that's sent for the main LLM response generation.
     const promptForNaming = prompt ?? version.prompt
-    if (canvas.name === undefined && promptForNaming && promptForNaming.trim().length > 0) {
+    if (
+      canvas.name === undefined &&
+      promptForNaming &&
+      promptForNaming.trim().length > 0
+    ) {
       // Schedule the name generation action (fire-and-forget, non-blocking)
       await ctx.scheduler.runAfter(
         0,
@@ -697,7 +701,7 @@ export const submitPrompt = mutation({
         {
           canvasId: canvas._id,
           versionId,
-        }
+        },
       )
     }
 
@@ -726,7 +730,7 @@ export const submitPrompt = mutation({
     const existingChunks = await ctx.db
       .query("responseChunks")
       .withIndex("canvasVersionId_chunkIndex", (q) =>
-        q.eq("canvasVersionId", versionId)
+        q.eq("canvasVersionId", versionId),
       )
       .collect()
     for (const chunk of existingChunks) {
@@ -756,7 +760,7 @@ export const submitPrompt = mutation({
       {
         onComplete: internal.internal.mutations.onWorkflowComplete,
         context: { versionId },
-      }
+      },
     )
 
     // Store workflow reference (as string for database storage)
@@ -795,7 +799,7 @@ export const cancelWorkflow = mutation({
     // Cancel the workflow (cast string back to WorkflowId)
     await workflow.cancel(
       ctx,
-      version.activeWorkflowId as unknown as WorkflowId
+      version.activeWorkflowId as unknown as WorkflowId,
     )
 
     // Clear the reference and update status
@@ -878,7 +882,7 @@ export const getCanvasVersionResponse = query({
       const chunks = await ctx.db
         .query("responseChunks")
         .withIndex("canvasVersionId_chunkIndex", (q) =>
-          q.eq("canvasVersionId", versionId)
+          q.eq("canvasVersionId", versionId),
         )
         .collect()
 
@@ -941,7 +945,9 @@ export const runSingleEvalManually = mutation({
     }
 
     if (version.activeWorkflowId || version.evalsStatus === "running") {
-      throw new Error("Cannot run eval while a workflow or eval run is in progress")
+      throw new Error(
+        "Cannot run eval while a workflow or eval run is in progress",
+      )
     }
 
     // Mark eval as running - preserving existing score/explanation
@@ -964,7 +970,7 @@ export const runSingleEvalManually = mutation({
       {
         evalId,
         response: version.response,
-      }
+      },
     )
 
     await upsertCanvasUpdatedTime(ctx, version.canvasId)
@@ -1012,7 +1018,7 @@ export const runEvals = mutation({
       .collect()
 
     const evalsWithCriteria = evals.filter(
-      (e) => e.eval && e.eval.trim().length > 0
+      (e) => e.eval && e.eval.trim().length > 0,
     )
 
     // If no evals to run, mark as complete immediately
@@ -1033,7 +1039,7 @@ export const runEvals = mutation({
       {
         onComplete: internal.internal.mutations.onWorkflowComplete,
         context: { versionId },
-      }
+      },
     )
 
     // Store workflow reference

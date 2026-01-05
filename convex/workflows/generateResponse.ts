@@ -24,14 +24,14 @@ export const generateResponseWorkflow = workflow.define({
   }),
   handler: async (
     ctx,
-    { versionId, skipEvals }
+    { versionId, skipEvals },
   ): Promise<{ success: boolean; cancelled: boolean }> => {
     // Run the generateResponse action with retry
     try {
       await ctx.runAction(
         internal.actions.generateResponse.generateResponse,
         { versionId, skipEvals },
-        { retry: true } // Retry on transient failures (max 3 attempts)
+        { retry: true }, // Retry on transient failures (max 3 attempts)
       )
     } catch (error) {
       // All retries exhausted — set final error state
@@ -50,7 +50,7 @@ export const generateResponseWorkflow = workflow.define({
     // Check if generation was cancelled by the user
     const cancelledAt = await ctx.runQuery(
       internal.internal.queries.checkGenerationCancelled,
-      { versionId }
+      { versionId },
     )
 
     return {
@@ -59,4 +59,3 @@ export const generateResponseWorkflow = workflow.define({
     }
   },
 })
-

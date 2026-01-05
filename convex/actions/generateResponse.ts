@@ -29,12 +29,12 @@ export const generateResponse = internalAction({
   }),
   handler: async (
     ctx,
-    { versionId, skipEvals }
+    { versionId, skipEvals },
   ): Promise<{ success: boolean; error?: string }> => {
     // 1. Load version and model info
     const versionData = await ctx.runQuery(
       internal.internal.queries.getVersionForGeneration,
-      { versionId }
+      { versionId },
     )
 
     if (!versionData.prompt) {
@@ -61,7 +61,7 @@ export const generateResponse = internalAction({
       // 4. Check for early cancellation before starting the stream
       const earlyCancelledAt = await ctx.runQuery(
         internal.internal.queries.checkGenerationCancelled,
-        { versionId }
+        { versionId },
       )
       if (earlyCancelledAt !== null) {
         console.log("Generation was cancelled before streaming started")
@@ -77,7 +77,7 @@ export const generateResponse = internalAction({
         try {
           const cancelledAt = await ctx.runQuery(
             internal.internal.queries.checkGenerationCancelled,
-            { versionId }
+            { versionId },
           )
           if (cancelledAt !== null && !wasCancelled) {
             wasCancelled = true
@@ -170,4 +170,3 @@ export const generateResponse = internalAction({
     }
   },
 })
-

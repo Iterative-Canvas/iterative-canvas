@@ -15,7 +15,7 @@ const vResultValidator = v.union(
   }),
   v.object({
     kind: v.literal("canceled"),
-  })
+  }),
 )
 
 /**
@@ -49,7 +49,7 @@ export const clearResponseChunks = internalMutation({
     const chunks = await ctx.db
       .query("responseChunks")
       .withIndex("canvasVersionId_chunkIndex", (q) =>
-        q.eq("canvasVersionId", versionId)
+        q.eq("canvasVersionId", versionId),
       )
       .collect()
 
@@ -89,7 +89,7 @@ export const updateResponseStatus = internalMutation({
       v.literal("idle"),
       v.literal("generating"),
       v.literal("complete"),
-      v.literal("error")
+      v.literal("error"),
     ),
     error: v.optional(v.string()),
   },
@@ -141,7 +141,7 @@ export const finalizeResponse = internalMutation({
     const chunks = await ctx.db
       .query("responseChunks")
       .withIndex("canvasVersionId_chunkIndex", (q) =>
-        q.eq("canvasVersionId", versionId)
+        q.eq("canvasVersionId", versionId),
       )
       .collect()
 
@@ -174,7 +174,9 @@ export const finalizeResponse = internalMutation({
     // If prepareEvals is requested and we have a response and weren't cancelled,
     // mark evals as running for faster UI feedback
     const wasCancelled = version.generationCancelledAt !== undefined
-    const hasResponse = fullResponse.length > 0 || (version.response && version.response.length > 0)
+    const hasResponse =
+      fullResponse.length > 0 ||
+      (version.response && version.response.length > 0)
 
     if (prepareEvals && hasResponse && !wasCancelled) {
       updates.evalsStatus = "running"
@@ -186,7 +188,7 @@ export const finalizeResponse = internalMutation({
         .collect()
 
       const evalsWithCriteria = evals.filter(
-        (e) => e.eval && e.eval.trim().length > 0
+        (e) => e.eval && e.eval.trim().length > 0,
       )
 
       for (const evalRecord of evalsWithCriteria) {
@@ -197,9 +199,13 @@ export const finalizeResponse = internalMutation({
     await ctx.db.patch(versionId, updates)
 
     // Schedule background cleanup of response chunks (non-blocking)
-    await ctx.scheduler.runAfter(0, internal.internal.mutations.clearResponseChunks, {
-      versionId,
-    })
+    await ctx.scheduler.runAfter(
+      0,
+      internal.internal.mutations.clearResponseChunks,
+      {
+        versionId,
+      },
+    )
 
     return null
   },
@@ -215,7 +221,7 @@ export const updateEvalsStatus = internalMutation({
       v.literal("idle"),
       v.literal("running"),
       v.literal("complete"),
-      v.literal("error")
+      v.literal("error"),
     ),
   },
   returns: v.null(),
@@ -247,7 +253,7 @@ export const updateEvalStatus = internalMutation({
       v.literal("idle"),
       v.literal("running"),
       v.literal("complete"),
-      v.literal("error")
+      v.literal("error"),
     ),
   },
   returns: v.null(),
@@ -274,7 +280,7 @@ export const markEvalsAsRunning = internalMutation({
       isRequired: v.boolean(),
       weight: v.number(),
       threshold: v.optional(v.number()),
-    })
+    }),
   ),
   handler: async (ctx, { versionId }) => {
     const evals = await ctx.db
@@ -284,7 +290,7 @@ export const markEvalsAsRunning = internalMutation({
 
     // Filter to evals with criteria and mark them as running
     const evalsWithCriteria = evals.filter(
-      (e) => e.eval && e.eval.trim().length > 0
+      (e) => e.eval && e.eval.trim().length > 0,
     )
 
     for (const evalRecord of evalsWithCriteria) {
@@ -309,7 +315,7 @@ export const markEvalsAsRunning = internalMutation({
           weight: e.weight,
           threshold: e.threshold,
         }
-      })
+      }),
     )
 
     return result
@@ -336,7 +342,7 @@ export const updateEvalResult = internalMutation({
       v.literal("idle"),
       v.literal("running"),
       v.literal("complete"),
-      v.literal("error")
+      v.literal("error"),
     ),
     score: v.optional(v.number()),
     explanation: v.optional(v.string()),
@@ -373,13 +379,13 @@ export const updateEvalResult = internalMutation({
       const allEvals = await ctx.db
         .query("evals")
         .withIndex("canvasVersionId", (q) =>
-          q.eq("canvasVersionId", evalRecord.canvasVersionId)
+          q.eq("canvasVersionId", evalRecord.canvasVersionId),
         )
         .collect()
 
       // Filter to evals with criteria defined
       const evalsWithCriteria = allEvals.filter(
-        (e) => e.eval && e.eval.trim().length > 0
+        (e) => e.eval && e.eval.trim().length > 0,
       )
 
       // Check if all evals are "settled"
@@ -411,8 +417,7 @@ export const updateEvalResult = internalMutation({
             weightedSum += e.weight * e.score!
           }
 
-          const aggregateScore =
-            totalWeight > 0 ? weightedSum / totalWeight : 0
+          const aggregateScore = totalWeight > 0 ? weightedSum / totalWeight : 0
 
           // Check if all required evals passed
           const requiredEvals = evalsWithCriteria.filter((e) => e.isRequired)
@@ -475,7 +480,7 @@ export const computeAggregateScore = internalMutation({
 
     // Filter to evals with criteria defined
     const evalsWithCriteria = evals.filter(
-      (e) => e.eval && e.eval.trim().length > 0
+      (e) => e.eval && e.eval.trim().length > 0,
     )
 
     // Check if all evals are "settled" (complete with score)
@@ -601,4 +606,3 @@ export const setCanvasName = internalMutation({
     return null
   },
 })
-

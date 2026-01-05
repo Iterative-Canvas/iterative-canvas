@@ -12,7 +12,7 @@ export const getVersionForGeneration = internalQuery({
     evals: v.array(
       v.object({
         eval: v.optional(v.string()),
-      })
+      }),
     ),
   }),
   handler: async (ctx, { versionId }) => {
@@ -59,7 +59,7 @@ export const getVersionWithResponseAndEvals = internalQuery({
         isRequired: v.boolean(),
         weight: v.number(),
         threshold: v.optional(v.number()),
-      })
+      }),
     ),
   }),
   handler: async (ctx, { versionId }) => {
@@ -88,7 +88,7 @@ export const getVersionWithResponseAndEvals = internalQuery({
           weight: e.weight,
           threshold: e.threshold,
         }
-      })
+      }),
     )
 
     return {
@@ -171,4 +171,3 @@ export const getEvalById = internalQuery({
     }
   },
 })
-

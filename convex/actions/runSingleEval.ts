@@ -15,7 +15,7 @@ const PassFailResultSchema = z.object({
   explanation: z
     .string()
     .describe(
-      "A brief explanation of why the response passed or failed the criteria"
+      "A brief explanation of why the response passed or failed the criteria",
     ),
 })
 
@@ -26,7 +26,7 @@ const SubjectiveResultSchema = z.object({
     .min(0)
     .max(1)
     .describe(
-      "A score from 0 to 1 indicating how well the response meets the criteria"
+      "A score from 0 to 1 indicating how well the response meets the criteria",
     ),
   explanation: z
     .string()
@@ -39,7 +39,7 @@ const SubjectiveResultSchema = z.object({
 function buildEvalPrompt(
   evalCriteria: string,
   response: string,
-  evalType: "pass_fail" | "subjective"
+  evalType: "pass_fail" | "subjective",
 ): string {
   const typeInstructions =
     evalType === "pass_fail"
@@ -79,7 +79,7 @@ export const runSingleEval = internalAction({
   }),
   handler: async (
     ctx,
-    { evalId, response }
+    { evalId, response },
   ): Promise<{ success: boolean; error?: string }> => {
     // 1. Load eval definition (includes existing score for error recovery)
     const evalDef = await ctx.runQuery(internal.internal.queries.getEvalById, {
@@ -144,7 +144,7 @@ export const runSingleEval = internalAction({
       // Otherwise, mark as error
       if (evalDef.existingScore !== undefined) {
         console.log(
-          `Eval ${evalId} failed but has existing score ${evalDef.existingScore}, recovering`
+          `Eval ${evalId} failed but has existing score ${evalDef.existingScore}, recovering`,
         )
         await ctx.runMutation(internal.internal.mutations.updateEvalResult, {
           evalId,
@@ -170,4 +170,3 @@ export const runSingleEval = internalAction({
     }
   },
 })
-

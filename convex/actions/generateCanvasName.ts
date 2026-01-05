@@ -13,7 +13,7 @@ const CanvasNameSchema = z.object({
   name: z
     .string()
     .describe(
-      "A concise, descriptive name for the canvas based on the prompt content. Should be 2-6 words, clear, and capture the main topic or purpose."
+      "A concise, descriptive name for the canvas based on the prompt content. Should be 2-6 words, clear, and capture the main topic or purpose.",
     ),
 })
 
@@ -36,7 +36,7 @@ export const generateCanvasName = internalAction({
     // Load the version data (same query used by generateResponse)
     const versionData = await ctx.runQuery(
       internal.internal.queries.getVersionForGeneration,
-      { versionId }
+      { versionId },
     )
 
     if (!versionData.prompt) {
@@ -47,7 +47,7 @@ export const generateCanvasName = internalAction({
     // Compile the full prompt context (user prompt + eval requirements)
     const fullPromptContext = compileFullPromptContext(
       versionData.prompt,
-      versionData.evals
+      versionData.evals,
     )
 
     // Use a fast, cheap model for name generation
@@ -73,7 +73,9 @@ Generate a fitting name for this canvas.`,
         name: truncatedName,
       })
 
-      console.log(`Generated canvas name: "${truncatedName}" for canvas ${canvasId}`)
+      console.log(
+        `Generated canvas name: "${truncatedName}" for canvas ${canvasId}`,
+      )
     } catch (error) {
       // Log the error but don't fail the workflow - the canvas just keeps no name
       console.error("Failed to generate canvas name:", error)
@@ -82,4 +84,3 @@ Generate a fitting name for this canvas.`,
     return null
   },
 })
-

@@ -33,7 +33,7 @@ export const runEvalsWorkflow = workflow.define({
     // Get evals to run and mark them as running (preserving scores)
     const evalsToRun = await ctx.runMutation(
       internal.internal.mutations.markEvalsAsRunning,
-      { versionId }
+      { versionId },
     )
 
     if (evalsToRun.length === 0) {
@@ -55,8 +55,8 @@ export const runEvalsWorkflow = workflow.define({
           evalId: evalDef._id,
           response,
         },
-        { retry: true } // Retry on transient failures
-      )
+        { retry: true }, // Retry on transient failures
+      ),
     )
 
     // Wait for all evals to complete
@@ -66,4 +66,3 @@ export const runEvalsWorkflow = workflow.define({
     return null
   },
 })
-

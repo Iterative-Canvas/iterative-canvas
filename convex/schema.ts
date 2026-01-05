@@ -64,8 +64,8 @@ const schema = defineSchema({
         v.literal("idle"),
         v.literal("generating"),
         v.literal("complete"),
-        v.literal("error")
-      )
+        v.literal("error"),
+      ),
     ),
     // Error message (set on any error, including during retries)
     responseError: v.optional(v.string()),
@@ -85,8 +85,8 @@ const schema = defineSchema({
         v.literal("idle"),
         v.literal("running"),
         v.literal("complete"),
-        v.literal("error")
-      )
+        v.literal("error"),
+      ),
     ),
     // Timestamp when evals completed running
     evalsCompletedAt: v.optional(v.number()),
@@ -139,8 +139,8 @@ const schema = defineSchema({
         v.literal("idle"),
         v.literal("running"),
         v.literal("complete"),
-        v.literal("error")
-      )
+        v.literal("error"),
+      ),
     ),
     // Error message if status is "error"
     error: v.optional(v.string()),

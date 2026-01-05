@@ -7,7 +7,7 @@
  * - generateCanvasName action (for auto-naming based on full prompt context)
  */
 export function compileSystemPrompt(
-  evals: Array<{ eval: string | undefined }>
+  evals: Array<{ eval: string | undefined }>,
 ): string | undefined {
   const evalRequirements = evals
     .filter((e) => e.eval && e.eval.trim().length > 0)
@@ -30,7 +30,7 @@ Provide a thorough, well-structured response that addresses the user's prompt wh
  */
 export function compileFullPromptContext(
   userPrompt: string,
-  evals: Array<{ eval: string | undefined }>
+  evals: Array<{ eval: string | undefined }>,
 ): string {
   const systemPrompt = compileSystemPrompt(evals)
 

@@ -15,10 +15,10 @@ function ShimmerOverlay() {
         "bg-no-repeat",
         "bg-[linear-gradient(90deg,transparent_44%,rgba(255,255,255,0.6)_50%,transparent_56%)]",
         "bg-[length:300%_100%]",
-        "opacity-60"
+        "opacity-60",
       )}
     />
-  );
+  )
 }
 
 export const Response = memo(
@@ -27,7 +27,7 @@ export const Response = memo(
       <Streamdown
         className={cn(
           "size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
-          className
+          className,
         )}
         {...props}
       />
@@ -41,7 +41,7 @@ export const Response = memo(
   (prevProps, nextProps) =>
     prevProps.children === nextProps.children &&
     prevProps.shimmer === nextProps.shimmer &&
-    prevProps.className === nextProps.className
-);
+    prevProps.className === nextProps.className,
+)
 
 Response.displayName = "Response"

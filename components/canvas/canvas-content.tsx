@@ -46,12 +46,13 @@ export function CanvasContent({
   // Use the streaming response query for real-time updates during generation
   const streamingResponse = useQuery(
     api.public.getCanvasVersionResponse,
-    versionId ? { versionId } : "skip"
+    versionId ? { versionId } : "skip",
   )
 
   // Determine display content based on streaming state
   const isGenerating = streamingResponse?.status === "generating"
-  const responseContent = streamingResponse?.content ?? canvasVersion?.response ?? ""
+  const responseContent =
+    streamingResponse?.content ?? canvasVersion?.response ?? ""
   const hasResponse = responseContent.trim().length > 0
   const displayContent = hasResponse ? responseContent : PLACEHOLDER_TEXT
 
@@ -139,7 +140,9 @@ export function CanvasContent({
             />
           ) : (
             <div className="p-4">
-              <Response shimmer={isWaitingForFirstChunk}>{displayContent}</Response>
+              <Response shimmer={isWaitingForFirstChunk}>
+                {displayContent}
+              </Response>
             </div>
           )}
         </div>

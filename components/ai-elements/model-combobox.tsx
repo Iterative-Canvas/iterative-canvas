@@ -153,7 +153,10 @@ export function ModelCombobox({
           <BatteryIcon className="h-4 w-4" />
         </Button>
       )}
-      <Popover open={disabled ? false : open} onOpenChange={disabled ? undefined : setOpen}>
+      <Popover
+        open={disabled ? false : open}
+        onOpenChange={disabled ? undefined : setOpen}
+      >
         <PopoverTrigger asChild>
           <Button
             type="button"
