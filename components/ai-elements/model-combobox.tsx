@@ -9,6 +9,8 @@ import {
   BatteryMedium,
   BatteryFull,
   BatteryLow,
+  Layers,
+  Building2,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -26,7 +28,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import type { Doc } from "@/convex/_generated/dataModel"
+
+type GroupingMode = "creator" | "provider"
 
 export type ModelComboboxProps = {
   value?: Doc<"aiGatewayModels">
@@ -35,6 +44,18 @@ export type ModelComboboxProps = {
   placeholder?: string
   availableModels: Doc<"aiGatewayModels">[]
   disabled?: boolean
+}
+
+// Parse creator and model name from modelId (e.g., "openai/gpt-4" -> { creator: "openai", modelName: "gpt-4" })
+function parseModelId(modelId: string): { creator: string; modelName: string } {
+  const slashIndex = modelId.indexOf("/")
+  if (slashIndex === -1) {
+    return { creator: modelId, modelName: modelId }
+  }
+  return {
+    creator: modelId.slice(0, slashIndex),
+    modelName: modelId.slice(slashIndex + 1),
+  }
 }
 
 export function ModelCombobox({
@@ -52,6 +73,7 @@ export function ModelCombobox({
   const [batteryState, setBatteryState] = React.useState<
     "medium" | "full" | "low"
   >("medium")
+  const [groupingMode, setGroupingMode] = React.useState<GroupingMode>("creator")
 
   // Sync selected state when value changes (for reactive updates)
   React.useEffect(() => {
@@ -76,25 +98,31 @@ export function ModelCombobox({
     return base
   }, [availableModels, availableById, selected])
 
-  // Group models by provider and sort by modelId
+  // Group models by maker or provider based on groupingMode
   const groups = useMemo(() => {
-    const byProvider = new Map<string, Doc<"aiGatewayModels">[]>()
+    const groupMap = new Map<string, Doc<"aiGatewayModels">[]>()
     for (const m of combinedModels) {
-      const arr = byProvider.get(m.provider) ?? []
+      const groupKey =
+        groupingMode === "creator" ? parseModelId(m.modelId).creator : m.provider
+      const arr = groupMap.get(groupKey) ?? []
       arr.push(m)
-      byProvider.set(m.provider, arr)
+      groupMap.set(groupKey, arr)
     }
-    // Sort providers alphabetically and each group's models by modelId
-    const providerNames = Array.from(byProvider.keys()).sort((a, b) =>
+    // Sort group names alphabetically and each group's models by model name
+    const groupNames = Array.from(groupMap.keys()).sort((a, b) =>
       a.localeCompare(b),
     )
-    return providerNames.map((provider) => ({
-      provider,
-      models: (byProvider.get(provider) ?? [])
+    return groupNames.map((groupName) => ({
+      groupName,
+      models: (groupMap.get(groupName) ?? [])
         .slice()
-        .sort((a, b) => a.modelId.localeCompare(b.modelId)),
+        .sort((a, b) => {
+          const aName = parseModelId(a.modelId).modelName
+          const bName = parseModelId(b.modelId).modelName
+          return aName.localeCompare(bName)
+        }),
     }))
-  }, [combinedModels])
+  }, [combinedModels, groupingMode])
 
   // Reasoning models get a battery icon toggle, similar to the ModelSelector component
   const reasoningModelIds = React.useMemo(
@@ -186,14 +214,51 @@ export function ModelCombobox({
               return modelId.toLowerCase().includes(q) ? 1 : 0
             }}
           >
-            <CommandInput placeholder="Search model..." className="h-9" />
+            <div className="flex items-center border-b px-3">
+              <CommandInput
+                placeholder="Search model..."
+                className="h-9 flex-1 border-0"
+              />
+              <Tooltip delayDuration={0}>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="ml-auto h-7 w-7 shrink-0"
+                    onClick={() =>
+                      setGroupingMode((m) =>
+                        m === "creator" ? "provider" : "creator",
+                      )
+                    }
+                  >
+                    {groupingMode === "creator" ? (
+                      <Layers className="h-4 w-4" />
+                    ) : (
+                      <Building2 className="h-4 w-4" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  <p>
+                    {groupingMode === "creator"
+                      ? "Grouped by creator"
+                      : "Grouped by provider"}
+                  </p>
+                  <p className="text-muted-foreground text-xs">
+                    Click to switch
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
             <CommandList>
               <CommandEmpty>No models found.</CommandEmpty>
-              {groups.map(({ provider, models }) => (
-                <CommandGroup key={provider} heading={provider}>
+              {groups.map(({ groupName, models }) => (
+                <CommandGroup key={groupName} heading={groupName}>
                   {models.map((m) => {
                     const isSelected = selected?._id === m._id
                     const isUnavailable = !availableById.has(m._id)
+                    const { modelName } = parseModelId(m.modelId)
                     return (
                       <CommandItem
                         key={m._id}
@@ -209,7 +274,7 @@ export function ModelCombobox({
                             />
                           )}
                           <span className="truncate" title={m.modelId}>
-                            {m.modelId}
+                            {modelName}
                           </span>
                         </span>
                         <Check

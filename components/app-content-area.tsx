@@ -146,6 +146,7 @@ export function AppContentArea({
 
   return (
     <PanelGroup
+      id="horizontal-panel-group"
       direction="horizontal"
       ref={horizontalGroupRef}
       className="flex-1"
@@ -156,7 +157,7 @@ export function AppContentArea({
         ref={leftPanelRef}
         onResize={(size) => setLeftCollapsed(size === 0)}
       >
-        <PanelGroup direction="vertical" ref={verticalGroupRef}>
+        <PanelGroup id="vertical-panel-group" direction="vertical" ref={verticalGroupRef}>
           <Panel
             defaultSize={50}
             className="p-4"
