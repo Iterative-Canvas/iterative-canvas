@@ -4,8 +4,19 @@ import { gateway } from "@ai-sdk/gateway"
 import schema from "./schema"
 import { v } from "convex/values"
 
+// Module-level flag to track if sync has run during local dev
+let hasRunInLocalDev = false
+
 export const fetchAndSyncAIGatewayModels = internalAction({
+  args: {},
   handler: async (ctx) => {
+    // In local dev, only run once per server restart
+    const isLocalDev = process.env.NODE_ENV !== "production"
+
+    if (isLocalDev && hasRunInLocalDev) {
+      return
+    }
+
     // Uses the AI_GATEWAY_API_KEY environment variable by default
     const availableModels = await gateway.getAvailableModels()
 
@@ -32,6 +43,12 @@ export const fetchAndSyncAIGatewayModels = internalAction({
     await ctx.runMutation(internal.private.syncAIGatewayModels, {
       incomingModels: languageModels,
     })
+
+    if (isLocalDev) {
+      hasRunInLocalDev = true
+    }
+
+    return null
   },
 })
 

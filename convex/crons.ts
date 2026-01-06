@@ -4,12 +4,23 @@ import { internal } from "./_generated/api"
 const crons = cronJobs()
 
 crons.daily(
-  "syncAIGatewayModels",
+  "syncAIGatewayModelsEveryDay",
   {
     hourUTC: 0,
     minuteUTC: 0,
   },
   internal.private.fetchAndSyncAIGatewayModels,
 )
+
+// This, combined with the local dev idempotency of fetchAndSyncAIGatewayModels, is a poor man's `onApplicationStart` hook.
+// Convex does not provide any lifecycle hooks. Running this on startup in local dev just to ensure that the dev database
+// is actually updated once in a while.
+if (process.env.NODE_ENV === "development") {
+  crons.interval(
+    "syncAIGatewayModelsEvery15s",
+    { seconds: 60 },
+    internal.private.fetchAndSyncAIGatewayModels,
+  )
+}
 
 export default crons
