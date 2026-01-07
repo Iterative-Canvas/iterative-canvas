@@ -538,7 +538,7 @@ export const computeAggregateScore = internalMutation({
     })
 
     // Determine overall success
-    const successThreshold = version.successThreshold ?? 0.7
+    const successThreshold = version.successThreshold ?? 0.8
     const isSuccessful = aggregateScore >= successThreshold && allRequiredPassed
 
     await ctx.db.patch(versionId, {

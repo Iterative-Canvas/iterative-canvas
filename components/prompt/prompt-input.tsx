@@ -137,13 +137,12 @@ export function PromptInput({ preloadedCanvasVersion, className }: Props) {
     if (!versionId) return
     // Clear pending state immediately for responsive UI
     setIsPendingGeneration(false)
-    // Only call backend if generation has actually started
-    if (isGenerating) {
-      try {
-        await cancelGeneration({ versionId })
-      } catch (error) {
-        console.error("Failed to cancel generation:", error)
-      }
+    // Always call backend, regardless of whether or not isGenerating has updated to true yet.
+    // The backend is idempotent in this case and handles edge cases.
+    try {
+      await cancelGeneration({ versionId })
+    } catch (error) {
+      console.error("Failed to cancel generation:", error)
     }
   }
 

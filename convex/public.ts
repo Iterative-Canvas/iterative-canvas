@@ -841,8 +841,9 @@ export const cancelGeneration = mutation({
     const canvas = await ctx.db.get(version.canvasId)
     if (!canvas || canvas.userId !== userId) throw new Error("Not authorized")
 
+    // Only cancel if actually generating - otherwise silently succeed
     if (version.responseStatus !== "generating") {
-      throw new Error("No generation in progress to cancel")
+      return null
     }
 
     // Signal cancellation and immediately clear workflow state
