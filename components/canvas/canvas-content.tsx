@@ -126,7 +126,7 @@ export function CanvasContent({
       <AIPromptInput
         onSubmit={(e) => handleSubmit(e, undefined)}
         className={cn(
-          "size-full min-w-[26rem] min-h-[15rem] flex flex-col",
+          "size-full min-w-0 min-h-[15rem] flex flex-col",
           className,
         )}
       >

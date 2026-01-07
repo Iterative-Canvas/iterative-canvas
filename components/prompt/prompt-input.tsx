@@ -154,7 +154,7 @@ export function PromptInput({ preloadedCanvasVersion, className }: Props) {
           handleSubmit()
         }}
         className={cn(
-          "size-full min-w-[26rem] min-h-[15rem] flex flex-col",
+          "size-full min-w-0 min-h-[15rem] flex flex-col",
           className,
         )}
       >
