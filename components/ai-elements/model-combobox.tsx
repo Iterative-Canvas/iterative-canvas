@@ -163,7 +163,7 @@ export function ModelCombobox({
   }
 
   // Display label for the button
-  const displayLabel = selected ? selected.name : placeholder
+  const displayLabel = selected ? parseModelId(selected.modelId).modelName : placeholder
   const showWarning = !!(selected && !availableById.has(selected._id))
 
   return (
