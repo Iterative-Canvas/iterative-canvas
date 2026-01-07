@@ -3,12 +3,9 @@ import { internal } from "./_generated/api"
 
 const crons = cronJobs()
 
-crons.daily(
+crons.cron(
   "syncAIGatewayModelsEveryDay",
-  {
-    hourUTC: 0,
-    minuteUTC: 0,
-  },
+  "0 0 * * *", // daily at midnight UTC
   internal.private.fetchAndSyncAIGatewayModels,
 )
 
@@ -17,7 +14,7 @@ crons.daily(
 // is actually updated once in a while.
 if (process.env.NODE_ENV === "development") {
   crons.interval(
-    "syncAIGatewayModelsEvery15s",
+    "syncAIGatewayModelsEveryMinute",
     { seconds: 60 },
     internal.private.fetchAndSyncAIGatewayModels,
   )

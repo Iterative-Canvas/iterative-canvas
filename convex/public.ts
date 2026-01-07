@@ -583,7 +583,14 @@ export const updateCanvasVersionResponse = mutation({
 
     // Check if a workflow is already running
     if (version.activeWorkflowId) {
-      throw new Error("Cannot update response while a workflow is running")
+      if (version.generationCancelledAt) {
+        throw new Error(
+          "WORKFLOW_CANCELLING: Previous generation is still finishing. Please wait a moment and try again.",
+        )
+      }
+      throw new Error(
+        "WORKFLOW_RUNNING: Cannot update response while a workflow is running.",
+      )
     }
 
     // Save the updated response
@@ -674,7 +681,15 @@ export const submitPrompt = mutation({
 
     // Check for existing active workflow
     if (version.activeWorkflowId) {
-      throw new Error("A workflow is already running for this version")
+      // Provide more context if cancellation was requested
+      if (version.generationCancelledAt) {
+        throw new Error(
+          "WORKFLOW_CANCELLING: Previous generation is still finishing. Please wait a moment and try again.",
+        )
+      }
+      throw new Error(
+        "WORKFLOW_RUNNING: A workflow is already running for this version.",
+      )
     }
 
     // Save prompt if provided
@@ -825,6 +840,8 @@ export const cancelWorkflow = mutation({
  *
  * Unlike cancelWorkflow, this allows the action to finish gracefully
  * rather than being abruptly terminated.
+ *
+ * This mutation is idempotent - calling it multiple times is safe.
  */
 export const cancelGeneration = mutation({
   args: {
@@ -841,20 +858,12 @@ export const cancelGeneration = mutation({
     const canvas = await ctx.db.get(version.canvasId)
     if (!canvas || canvas.userId !== userId) throw new Error("Not authorized")
 
-    // Only cancel if actually generating - otherwise silently succeed
-    if (version.responseStatus !== "generating") {
-      return null
-    }
 
-    // Signal cancellation and immediately clear workflow state
-    // This makes the UI (including evals module) responsive right away
-    // The generateResponse action will still complete gracefully in the background
-    await ctx.db.patch(versionId, {
-      generationCancelledAt: Date.now(),
-      activeWorkflowId: undefined,
-      // Reset evals status to idle since we won't be running evals after cancellation
-      evalsStatus: "idle",
-    })
+    if (!version.generationCancelledAt) {
+      await ctx.db.patch(versionId, {
+        generationCancelledAt: Date.now(),
+      })
+    }
 
     return null
   },
@@ -878,6 +887,12 @@ export const getCanvasVersionResponse = query({
     const canvas = await ctx.db.get(version.canvasId)
     if (!canvas || canvas.userId !== userId) throw new Error("Not authorized")
 
+    // Check if cancellation has been requested but generation is still in progress
+    // This allows the frontend to show "Cancelling..." state
+    const isCancelling =
+      version.responseStatus === "generating" &&
+      version.generationCancelledAt !== undefined
+
     // If generating, return chunks concatenated; otherwise return consolidated response
     if (version.responseStatus === "generating") {
       const chunks = await ctx.db
@@ -900,6 +915,7 @@ export const getCanvasVersionResponse = query({
         status: version.responseStatus,
         content: displayContent,
         isComplete: false,
+        isCancelling,
         error: version.responseError,
         errorAt: version.responseErrorAt,
       }
@@ -909,6 +925,7 @@ export const getCanvasVersionResponse = query({
       status: version.responseStatus ?? "idle",
       content: version.response ?? "",
       isComplete: version.responseStatus === "complete",
+      isCancelling: false,
       error: version.responseError,
       errorAt: version.responseErrorAt,
     }
@@ -946,8 +963,13 @@ export const runSingleEvalManually = mutation({
     }
 
     if (version.activeWorkflowId || version.evalsStatus === "running") {
+      if (version.generationCancelledAt) {
+        throw new Error(
+          "WORKFLOW_CANCELLING: Previous generation is still finishing. Please wait a moment and try again.",
+        )
+      }
       throw new Error(
-        "Cannot run eval while a workflow or eval run is in progress",
+        "WORKFLOW_RUNNING: Cannot run eval while a workflow or eval run is in progress.",
       )
     }
 
@@ -1009,7 +1031,14 @@ export const runEvals = mutation({
     }
 
     if (version.activeWorkflowId) {
-      throw new Error("A workflow is already running for this version")
+      if (version.generationCancelledAt) {
+        throw new Error(
+          "WORKFLOW_CANCELLING: Previous generation is still finishing. Please wait a moment and try again.",
+        )
+      }
+      throw new Error(
+        "WORKFLOW_RUNNING: A workflow is already running for this version.",
+      )
     }
 
     // Check if there are any evals with criteria to run

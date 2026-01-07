@@ -24,6 +24,7 @@ import { RefreshCw, PencilIcon, XIcon, CheckIcon } from "lucide-react"
 import { usePreloadedQuery, useMutation, useQuery } from "convex/react"
 import { Preloaded } from "convex/react"
 import { api } from "@/convex/_generated/api"
+import { toast } from "sonner"
 
 const PLACEHOLDER_TEXT =
   "Submit a prompt to generate the **canvas**. You may also edit the canvas directly."
@@ -77,6 +78,15 @@ export function CanvasContent({
     }
   }, [displayContent, isEditing])
 
+  // Auto-exit edit mode when generation starts (e.g., user submitted a new prompt)
+  // This discards any unsaved manual edits, which is the expected behavior
+  useEffect(() => {
+    if (isGenerating && isEditing) {
+      setIsEditing(false)
+      // Draft will be updated by the effect above once isEditing is false
+    }
+  }, [isGenerating, isEditing])
+
   const submitToBackend = useCallback(
     async (response: string, skip?: "evals") => {
       if (!versionId) {
@@ -106,7 +116,29 @@ export function CanvasContent({
         await submitToBackend(draft, skip)
         setIsEditing(false)
       } catch (error) {
-        console.error("Failed to update canvas response:", error)
+        const message = error instanceof Error ? error.message : String(error)
+
+        if (message.includes("WORKFLOW_CANCELLING")) {
+          toast.warning("Previous generation is still finishing", {
+            description: "Please wait a moment and try again.",
+            duration: 4000,
+          })
+        } else if (message.includes("WORKFLOW_RUNNING")) {
+          toast.warning("A generation is in progress", {
+            description:
+              "Cannot edit response while generating. Please wait or cancel first.",
+            duration: 4000,
+          })
+        } else {
+          console.error("Failed to update canvas response:", error)
+          toast.error("Failed to save response", {
+            description:
+              process.env.NODE_ENV === "development"
+                ? message
+                : "Please try again.",
+            duration: 5000,
+          })
+        }
       } finally {
         setIsSubmitting(false)
       }

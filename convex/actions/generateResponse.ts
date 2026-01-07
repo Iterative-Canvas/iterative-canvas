@@ -11,7 +11,7 @@ import { compileSystemPrompt } from "../lib"
 // These control how often we flush to the database
 const MIN_CHUNK_SIZE = 20
 const FLUSH_INTERVAL_MS = 200
-// How often to check for cancellation (in milliseconds)
+// How often to check for cancellation before streaming starts (in milliseconds)
 const CANCELLATION_CHECK_INTERVAL_MS = 500
 
 /**
@@ -113,6 +113,17 @@ export const generateResponse = internalAction({
             now - lastFlushTime >= FLUSH_INTERVAL_MS)
 
         if (shouldFlush && buffer.length > 0) {
+          // Check for cancellation while we're already hitting the database
+          const cancelledAt = await ctx.runQuery(
+            internal.internal.queries.checkGenerationCancelled,
+            { versionId },
+          )
+          if (cancelledAt !== null && !wasCancelled) {
+            wasCancelled = true
+            abortController.abort()
+            return // Don't bother saving this chunk
+          }
+
           await ctx.runMutation(internal.internal.mutations.saveResponseChunk, {
             versionId,
             content: buffer,
@@ -124,6 +135,12 @@ export const generateResponse = internalAction({
         }
       }
 
+      // Stop pre-streaming polling once chunks start flowing
+      if (cancellationCheckInterval) {
+        clearInterval(cancellationCheckInterval)
+        cancellationCheckInterval = null
+      }
+
       for await (const textPart of result.textStream) {
         buffer += textPart
         await flush()
@@ -133,10 +150,9 @@ export const generateResponse = internalAction({
       await flush(true)
 
       // 9. Consolidate chunks into final response
-      // Only prepare evals if they will actually run (skipEvals is not true)
       await ctx.runMutation(internal.internal.mutations.finalizeResponse, {
         versionId,
-        prepareEvals: !skipEvals, // Mark evals as running only if they will run
+        prepareEvals: !skipEvals,
       })
 
       return { success: true }
@@ -144,7 +160,6 @@ export const generateResponse = internalAction({
       // Check if this was a cancellation abort
       if (wasCancelled || abortController.signal.aborted) {
         console.log("Generation was cancelled by user, saving partial response")
-        // Still finalize whatever we have
         await ctx.runMutation(internal.internal.mutations.finalizeResponse, {
           versionId,
         })
@@ -154,8 +169,6 @@ export const generateResponse = internalAction({
       const message = error instanceof Error ? error.message : "Unknown error"
       console.error("Generation failed:", message)
 
-      // Record the error for frontend toast notifications.
-      // Status stays "generating" — workflow will set final error if all retries fail.
       await ctx.runMutation(internal.internal.mutations.recordRetryError, {
         versionId,
         error: message,
@@ -163,7 +176,6 @@ export const generateResponse = internalAction({
 
       throw error
     } finally {
-      // Clean up the cancellation check interval
       if (cancellationCheckInterval) {
         clearInterval(cancellationCheckInterval)
       }

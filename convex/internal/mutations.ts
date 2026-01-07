@@ -3,6 +3,71 @@ import { internal } from "../_generated/api"
 import { v } from "convex/values"
 import { vWorkflowId } from "@convex-dev/workflow"
 import { EVAL_DEFAULTS, EVAL_AGGREGATE_DEFAULTS } from "../lib"
+import { Doc } from "../_generated/dataModel"
+
+/**
+ * Eval Status State Machine:
+ * - "idle"     → never run or reset
+ * - "running"  → actively executing (score preserved from previous run)
+ * - "complete" → finished successfully with score
+ * - "error"    → failed with no recoverable score
+ *
+ * An eval is "settled" when status === "complete" && score !== undefined.
+ * An eval is "unsettled" when:
+ *   - status === "running", OR
+ *   - status === "idle" with score === undefined (never run), OR
+ *   - status === "error" with score === undefined (failed with no prior result)
+ *
+ * Note: An eval can be in "error" status but still be settled if it retains
+ * a score from a previous successful run.
+ */
+function isEvalSettled(e: Doc<"evals">): boolean {
+  return e.status === "complete" && e.score !== undefined
+}
+
+/**
+ * Compute aggregate score and success status from a list of evals.
+ * Returns undefined if any eval is unsettled.
+ */
+function computeAggregateFromEvals(
+  evalsWithCriteria: Array<Doc<"evals">>,
+  successThreshold: number,
+): { aggregateScore: number; isSuccessful: boolean } | undefined {
+  if (!evalsWithCriteria.every(isEvalSettled)) {
+    return undefined
+  }
+
+  if (evalsWithCriteria.length === 0) {
+    return undefined
+  }
+
+  // Calculate weighted average
+  let totalWeight = 0
+  let weightedSum = 0
+
+  for (const evalRecord of evalsWithCriteria) {
+    totalWeight += evalRecord.weight
+    weightedSum += evalRecord.weight * evalRecord.score!
+  }
+
+  const aggregateScore = totalWeight > 0 ? weightedSum / totalWeight : 0
+
+  // Check if all required evals passed
+  const requiredEvals = evalsWithCriteria.filter((e) => e.isRequired)
+  const allRequiredPassed = requiredEvals.every((e) => {
+    if (e.score === undefined) return false
+    if (e.type === "pass_fail") {
+      return e.score === 1
+    } else {
+      const threshold = e.threshold ?? EVAL_DEFAULTS.subjectiveThreshold
+      return e.score >= threshold
+    }
+  })
+
+  const isSuccessful = aggregateScore >= successThreshold && allRequiredPassed
+
+  return { aggregateScore, isSuccessful }
+}
 
 // Validator for workflow result (matches the shape from @convex-dev/workflow)
 const vResultValidator = v.union(
@@ -376,7 +441,7 @@ export const updateEvalResult = internalMutation({
       const version = await ctx.db.get(evalRecord.canvasVersionId)
       if (!version) return null
 
-      // Get all evals for this version
+      // Get all evals for this version with criteria defined
       const allEvals = await ctx.db
         .query("evals")
         .withIndex("canvasVersionId", (q) =>
@@ -384,76 +449,42 @@ export const updateEvalResult = internalMutation({
         )
         .collect()
 
-      // Filter to evals with criteria defined
       const evalsWithCriteria = allEvals.filter(
         (e) => e.eval && e.eval.trim().length > 0,
       )
 
-      // Check if all evals are "settled"
-      // Settled: status === "complete" AND score !== undefined
-      const isSettled = (e: (typeof evalsWithCriteria)[0]) =>
-        e.status === "complete" && e.score !== undefined
+      const successThreshold =
+        version.successThreshold ?? EVAL_AGGREGATE_DEFAULTS.successThreshold
+      const aggregateResult = computeAggregateFromEvals(
+        evalsWithCriteria,
+        successThreshold,
+      )
 
-      const allSettled = evalsWithCriteria.every(isSettled)
-
-      if (allSettled) {
-        // All evals settled - compute aggregate score
-        const settledEvals = evalsWithCriteria // All are settled at this point
-
-        if (settledEvals.length === 0) {
-          await ctx.db.patch(evalRecord.canvasVersionId, {
-            evalsStatus: "complete",
-            evalsCompletedAt: Date.now(),
-            aggregateScore: undefined,
-            isSuccessful: undefined,
-            activeWorkflowId: undefined,
-          })
-        } else {
-          // Calculate weighted average
-          let totalWeight = 0
-          let weightedSum = 0
-
-          for (const e of settledEvals) {
-            totalWeight += e.weight
-            weightedSum += e.weight * e.score!
-          }
-
-          const aggregateScore = totalWeight > 0 ? weightedSum / totalWeight : 0
-
-          // Check if all required evals passed
-          const requiredEvals = evalsWithCriteria.filter((e) => e.isRequired)
-          const allRequiredPassed = requiredEvals.every((e) => {
-            if (e.score === undefined) return false
-            if (e.type === "pass_fail") {
-              return e.score === 1
-            } else {
-              const threshold = e.threshold ?? EVAL_DEFAULTS.subjectiveThreshold
-              return e.score >= threshold
-            }
-          })
-
-          const successThreshold =
-            version.successThreshold ?? EVAL_AGGREGATE_DEFAULTS.successThreshold
-          const isSuccessful =
-            aggregateScore >= successThreshold && allRequiredPassed
-
-          await ctx.db.patch(evalRecord.canvasVersionId, {
-            evalsStatus: "complete",
-            evalsCompletedAt: Date.now(),
-            aggregateScore,
-            isSuccessful,
-            activeWorkflowId: undefined,
-          })
-        }
-      } else {
+      if (aggregateResult !== undefined) {
+        // All evals settled - update with computed aggregate
+        await ctx.db.patch(evalRecord.canvasVersionId, {
+          evalsStatus: "complete",
+          evalsCompletedAt: Date.now(),
+          aggregateScore: aggregateResult.aggregateScore,
+          isSuccessful: aggregateResult.isSuccessful,
+          activeWorkflowId: undefined,
+        })
+      } else if (evalsWithCriteria.length === 0) {
+        // No evals with criteria - mark as complete with no aggregate
+        await ctx.db.patch(evalRecord.canvasVersionId, {
+          evalsStatus: "complete",
+          evalsCompletedAt: Date.now(),
+          aggregateScore: undefined,
+          isSuccessful: undefined,
+          activeWorkflowId: undefined,
+        })
+      } else if (version.evalsStatus === "running") {
         // Some evals are unsettled - set aggregate to indeterminate
         // Only update if we're in a running state (to avoid clobbering during idle)
-        if (version.evalsStatus === "running") {
-          await ctx.db.patch(evalRecord.canvasVersionId, {
-            aggregateScore: undefined,
-            isSuccessful: undefined,
-          })
-        }
+        await ctx.db.patch(evalRecord.canvasVersionId, {
+          aggregateScore: undefined,
+          isSuccessful: undefined,
+        })
       }
     }
 
@@ -478,29 +509,28 @@ export const computeAggregateScore = internalMutation({
       .withIndex("canvasVersionId", (q) => q.eq("canvasVersionId", versionId))
       .collect()
 
-    // Filter to evals with criteria defined
     const evalsWithCriteria = evals.filter(
       (e) => e.eval && e.eval.trim().length > 0,
     )
 
-    // Check if all evals are "settled" (complete with score)
-    const isSettled = (e: (typeof evalsWithCriteria)[0]) =>
-      e.status === "complete" && e.score !== undefined
+    const successThreshold =
+      version.successThreshold ?? EVAL_AGGREGATE_DEFAULTS.successThreshold
+    const aggregateResult = computeAggregateFromEvals(
+      evalsWithCriteria,
+      successThreshold,
+    )
 
-    const allSettled = evalsWithCriteria.every(isSettled)
-
-    if (!allSettled) {
-      // Some evals are unsettled - set aggregate to indeterminate
+    if (aggregateResult !== undefined) {
+      // All evals settled - update with computed aggregate
       await ctx.db.patch(versionId, {
-        aggregateScore: undefined,
-        isSuccessful: undefined,
+        evalsStatus: "complete",
+        evalsCompletedAt: Date.now(),
+        aggregateScore: aggregateResult.aggregateScore,
+        isSuccessful: aggregateResult.isSuccessful,
         activeWorkflowId: undefined,
       })
-      return null
-    }
-
-    // All evals are settled - compute aggregate
-    if (evalsWithCriteria.length === 0) {
+    } else if (evalsWithCriteria.length === 0) {
+      // No evals with criteria - mark as complete with no aggregate
       await ctx.db.patch(versionId, {
         evalsStatus: "complete",
         evalsCompletedAt: Date.now(),
@@ -508,47 +538,14 @@ export const computeAggregateScore = internalMutation({
         isSuccessful: undefined,
         activeWorkflowId: undefined,
       })
-      return null
+    } else {
+      // Some evals are unsettled - set aggregate to indeterminate
+      await ctx.db.patch(versionId, {
+        aggregateScore: undefined,
+        isSuccessful: undefined,
+        activeWorkflowId: undefined,
+      })
     }
-
-    // Calculate weighted average
-    let totalWeight = 0
-    let weightedSum = 0
-
-    for (const evalRecord of evalsWithCriteria) {
-      const weight = evalRecord.weight
-      const score = evalRecord.score!
-      totalWeight += weight
-      weightedSum += weight * score
-    }
-
-    const aggregateScore = totalWeight > 0 ? weightedSum / totalWeight : 0
-
-    // Check if all required evals passed
-    const requiredEvals = evalsWithCriteria.filter((e) => e.isRequired)
-    const allRequiredPassed = requiredEvals.every((e) => {
-      if (e.score === undefined) return false
-      if (e.type === "pass_fail") {
-        return e.score === 1
-      } else {
-        // subjective: check against threshold
-        const threshold = e.threshold ?? EVAL_DEFAULTS.subjectiveThreshold
-        return e.score >= threshold
-      }
-    })
-
-    // Determine overall success
-    const successThreshold =
-      version.successThreshold ?? EVAL_AGGREGATE_DEFAULTS.successThreshold
-    const isSuccessful = aggregateScore >= successThreshold && allRequiredPassed
-
-    await ctx.db.patch(versionId, {
-      evalsStatus: "complete",
-      evalsCompletedAt: Date.now(),
-      aggregateScore,
-      isSuccessful,
-      activeWorkflowId: undefined,
-    })
 
     return null
   },

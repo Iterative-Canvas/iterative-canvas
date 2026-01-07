@@ -147,8 +147,13 @@ export function ModelCombobox({
     })
   }
 
-  // Fire callbacks on initial render and when dependencies change
+  // Fire onChange only when selection actually changes (not on initial mount)
+  const didMount = React.useRef(false)
   React.useEffect(() => {
+    if (!didMount.current) {
+      didMount.current = true
+      return
+    }
     onChange?.(selected)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected])

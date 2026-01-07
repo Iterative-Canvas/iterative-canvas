@@ -43,6 +43,7 @@ import {
   EVAL_AGGREGATE_DEFAULTS,
   DEFAULT_EVALS_MODEL_ID,
 } from "@/convex/lib"
+import { toast } from "sonner"
 
 type EvalsContentProps = {
   preloadedCanvasVersion?: Preloaded<typeof api.public.getCanvasVersionById>
@@ -254,8 +255,12 @@ export function EvalsContent({
   const debounceTimersRef = useRef<Map<Id<"evals">, NodeJS.Timeout>>(new Map())
 
   // Derive disabled state from backend - disabled when workflow is active or evals are running
+  // UNLESS cancellation was requested - in that case, we optimistically enable
+  // since evals won't run after cancellation and the user should be able to interact
+  const isCancelling = Boolean(canvasVersion?.generationCancelledAt)
   const isDisabled = Boolean(
-    canvasVersion?.activeWorkflowId || canvasVersion?.evalsStatus === "running",
+    (canvasVersion?.activeWorkflowId && !isCancelling) ||
+      canvasVersion?.evalsStatus === "running",
   )
 
   // Derive evals running state from backend
@@ -489,15 +494,41 @@ export function EvalsContent({
   // Mutation for running a single eval
   const runSingleEvalManually = useMutation(api.public.runSingleEvalManually)
 
+  // Helper to handle eval errors with appropriate user feedback
+  const handleEvalError = useCallback((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error)
+
+    if (message.includes("WORKFLOW_CANCELLING")) {
+      toast.warning("Previous generation is still finishing", {
+        description: "Please wait a moment and try again.",
+        duration: 4000,
+      })
+    } else if (message.includes("WORKFLOW_RUNNING")) {
+      toast.warning("A workflow is in progress", {
+        description: "Please wait for it to complete or cancel it first.",
+        duration: 4000,
+      })
+    } else {
+      console.error("Failed to run eval:", error)
+      toast.error("Failed to run eval", {
+        description:
+          process.env.NODE_ENV === "development"
+            ? message
+            : "Please try again.",
+        duration: 5000,
+      })
+    }
+  }, [])
+
   // Handler for running all evals
   const handleRunAll = useCallback(async () => {
     if (!versionId || isDisabled) return
     try {
       await runEvals({ versionId })
     } catch (error) {
-      console.error("Failed to run evals:", error)
+      handleEvalError(error)
     }
-  }, [versionId, runEvals, isDisabled])
+  }, [versionId, runEvals, isDisabled, handleEvalError])
 
   // Handler for running a single eval
   const handleRunSingleEval = useCallback(
@@ -506,10 +537,10 @@ export function EvalsContent({
       try {
         await runSingleEvalManually({ evalId })
       } catch (error) {
-        console.error("Failed to run eval:", error)
+        handleEvalError(error)
       }
     },
-    [runSingleEvalManually, isDisabled],
+    [runSingleEvalManually, isDisabled, handleEvalError],
   )
 
   return (

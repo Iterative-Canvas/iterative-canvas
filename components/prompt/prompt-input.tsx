@@ -18,6 +18,7 @@ import {
   ImageIcon,
   SendIcon,
   CircleStopIcon,
+  LoaderIcon,
 } from "lucide-react"
 import { CardContent } from "@/components/ui/card"
 import {
@@ -31,6 +32,7 @@ import { SplitButton } from "@/components/split-button"
 import { usePreloadedQuery, useMutation, useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { Preloaded } from "convex/react"
+import { toast } from "sonner"
 
 const DEFAULT_PROMPT =
   "Write your **prompt** here. Use _markdown_ for rich text."
@@ -54,6 +56,8 @@ export function PromptInput({ preloadedCanvasVersion, className }: Props) {
     versionId ? { versionId } : "skip",
   )
   const isGenerating = streamingResponse?.status === "generating"
+  // Backend has received cancellation request but generation is still finishing
+  const isCancelling = streamingResponse?.isCancelling ?? false
 
   const [draft, setDraft] = useState(prompt ?? DEFAULT_PROMPT)
   const [isEditing, setIsEditing] = useState(false)
@@ -94,6 +98,34 @@ export function PromptInput({ preloadedCanvasVersion, className }: Props) {
     }
   }
 
+  // Helper to handle submit errors with appropriate user feedback
+  const handleSubmitError = (error: unknown) => {
+    setIsPendingGeneration(false)
+
+    const message = error instanceof Error ? error.message : String(error)
+
+    if (message.includes("WORKFLOW_CANCELLING")) {
+      toast.warning("Previous generation is still finishing", {
+        description: "Please wait a moment and try again.",
+        duration: 4000,
+      })
+    } else if (message.includes("WORKFLOW_RUNNING")) {
+      toast.warning("A generation is already in progress", {
+        description: "Please wait for it to complete or cancel it first.",
+        duration: 4000,
+      })
+    } else {
+      // Generic error - still show something useful
+      toast.error("Failed to submit prompt", {
+        description:
+          process.env.NODE_ENV === "development"
+            ? message
+            : "Please try again.",
+        duration: 5000,
+      })
+    }
+  }
+
   // Submit prompt - generates LLM response AND runs evals
   const handleSubmit = async () => {
     if (!isEditing || !versionId) return
@@ -106,8 +138,8 @@ export function PromptInput({ preloadedCanvasVersion, className }: Props) {
         skipEvals: false,
       })
       setIsEditing(false)
-    } catch {
-      setIsPendingGeneration(false) // Clear on error
+    } catch (error) {
+      handleSubmitError(error)
     } finally {
       setIsSubmitting(false)
     }
@@ -125,8 +157,8 @@ export function PromptInput({ preloadedCanvasVersion, className }: Props) {
         skipEvals: true,
       })
       setIsEditing(false)
-    } catch {
-      setIsPendingGeneration(false) // Clear on error
+    } catch (error) {
+      handleSubmitError(error)
     } finally {
       setIsSubmitting(false)
     }
@@ -198,12 +230,22 @@ export function PromptInput({ preloadedCanvasVersion, className }: Props) {
           <div className="flex items-center gap-1">
             {showStopButton ? (
               // Show stop button during generation (or pending generation)
+              // Once cancellation is requested, show "Cancelling..." state
               <PromptInputButton
                 onClick={handleCancelGeneration}
-                aria-label="Stop Generation"
-                className="text-destructive hover:text-destructive"
+                aria-label={isCancelling ? "Cancelling..." : "Stop Generation"}
+                className={cn(
+                  isCancelling
+                    ? "text-muted-foreground cursor-not-allowed"
+                    : "text-destructive hover:text-destructive",
+                )}
+                disabled={isCancelling}
               >
-                <CircleStopIcon size={16} />
+                {isCancelling ? (
+                  <LoaderIcon size={16} className="animate-spin" />
+                ) : (
+                  <CircleStopIcon size={16} />
+                )}
               </PromptInputButton>
             ) : !isEditing ? (
               <PromptInputButton
