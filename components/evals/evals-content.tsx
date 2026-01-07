@@ -38,6 +38,11 @@ import {
 import ModelCombobox from "@/components/ai-elements/model-combobox"
 import { Doc, Id } from "@/convex/_generated/dataModel"
 import { api } from "@/convex/_generated/api"
+import {
+  EVAL_DEFAULTS,
+  EVAL_AGGREGATE_DEFAULTS,
+  DEFAULT_EVALS_MODEL_ID,
+} from "@/convex/lib"
 
 type EvalsContentProps = {
   preloadedCanvasVersion?: Preloaded<typeof api.public.getCanvasVersionById>
@@ -215,7 +220,8 @@ export function EvalsContent({
     : null
 
   const versionId = canvasVersion?._id
-  const serverSuccessThreshold = canvasVersion?.successThreshold ?? 0.8
+  const serverSuccessThreshold =
+    canvasVersion?.successThreshold ?? EVAL_AGGREGATE_DEFAULTS.successThreshold
 
   // Get evals from backend
   const evals = useQuery(
@@ -311,7 +317,8 @@ export function EvalsContent({
         if (evalRecord.type === "pass_fail") {
           result = evalRecord.score === 1 ? "pass" : "fail"
         } else {
-          const threshold = evalRecord.threshold ?? 0.5
+          const threshold =
+            evalRecord.threshold ?? EVAL_DEFAULTS.subjectiveThreshold
           result = evalRecord.score >= threshold ? "pass" : "fail"
         }
       }
@@ -323,7 +330,7 @@ export function EvalsContent({
         text,
         weight: evalRecord.weight,
         type,
-        threshold: evalRecord.threshold ?? 0.5,
+        threshold: evalRecord.threshold ?? EVAL_DEFAULTS.subjectiveThreshold,
         model: evalRecord.modelId,
         required: evalRecord.isRequired,
         fitToContent: fitToContentMap.get(evalRecord._id) ?? false,
@@ -450,16 +457,16 @@ export function EvalsContent({
 
     // Get default model from user preferences or app defaults
     const defaultModelId = availableModels.find(
-      (m) => m.modelId === "openai/gpt-4o",
+      (m) => m.modelId === DEFAULT_EVALS_MODEL_ID,
     )?._id
 
     await createEval({
       versionId,
       eval: "",
       modelId: defaultModelId,
-      isRequired: true,
-      weight: 1,
-      type: "pass_fail",
+      isRequired: EVAL_DEFAULTS.isRequired,
+      weight: EVAL_DEFAULTS.weight,
+      type: EVAL_DEFAULTS.type,
       threshold: undefined,
     })
   }, [versionId, createEval, availableModels])

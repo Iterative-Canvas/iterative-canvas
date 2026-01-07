@@ -6,6 +6,7 @@ import { gateway } from "@ai-sdk/gateway"
 import { generateText, Output } from "ai"
 import { z } from "zod"
 import { v } from "convex/values"
+import { EVAL_DEFAULTS } from "../lib"
 
 // Schema for pass/fail eval response
 const PassFailResultSchema = z.object({
@@ -91,7 +92,8 @@ export const runSingleEval = internalAction({
       await ctx.runMutation(internal.internal.mutations.updateEvalResult, {
         evalId,
         status: "complete",
-        score: evalDef.type === "pass_fail" ? 1 : 0.5,
+        score:
+          evalDef.type === "pass_fail" ? 1 : EVAL_DEFAULTS.subjectiveThreshold,
         explanation: "No evaluation criteria defined",
       })
       return { success: true }

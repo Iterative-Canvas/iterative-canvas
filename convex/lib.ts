@@ -1,3 +1,52 @@
+// =============================================================================
+// Eval Defaults - Single Source of Truth
+// =============================================================================
+
+/**
+ * Default values for individual evals when created.
+ */
+export const EVAL_DEFAULTS = {
+  /** Whether the eval is required for success */
+  isRequired: true,
+  /** Default weight for weighted average calculation */
+  weight: 1,
+  /** Default eval type */
+  type: "pass_fail" as const,
+  /** Default threshold for subjective evals (0-1 scale) */
+  subjectiveThreshold: 0.7,
+}
+
+/**
+ * Default values for aggregate eval results.
+ */
+export const EVAL_AGGREGATE_DEFAULTS = {
+  /** Default success threshold for overall eval pass/fail (0-1 scale) */
+  successThreshold: 0.7,
+}
+
+// =============================================================================
+// Default Model IDs
+// =============================================================================
+
+/**
+ * Default model ID used for prompt generation when user has no preference.
+ */
+export const DEFAULT_PROMPT_MODEL_ID = "openai/gpt-5.2"
+
+/**
+ * Default model ID used for refining responses when user has no preference.
+ */
+export const DEFAULT_REFINE_MODEL_ID = "openai/gpt-oss-120b"
+
+/**
+ * Default model ID used for evals when user has no preference.
+ */
+export const DEFAULT_EVALS_MODEL_ID = "openai/gpt-oss-120b"
+
+// =============================================================================
+// Prompt Compilation
+// =============================================================================
+
 /**
  * Compile a system prompt that includes eval requirements.
  * This helps the LLM understand what constraints it should satisfy.

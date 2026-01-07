@@ -2,6 +2,7 @@ import { internalMutation } from "../_generated/server"
 import { internal } from "../_generated/api"
 import { v } from "convex/values"
 import { vWorkflowId } from "@convex-dev/workflow"
+import { EVAL_DEFAULTS, EVAL_AGGREGATE_DEFAULTS } from "../lib"
 
 // Validator for workflow result (matches the shape from @convex-dev/workflow)
 const vResultValidator = v.union(
@@ -426,14 +427,13 @@ export const updateEvalResult = internalMutation({
             if (e.type === "pass_fail") {
               return e.score === 1
             } else {
-              const threshold = e.threshold ?? 0.5
+              const threshold = e.threshold ?? EVAL_DEFAULTS.subjectiveThreshold
               return e.score >= threshold
             }
           })
 
-          // TODO: The default value of 0.8 is also duplicated on the backend.
-          // This should be consolidated into a single source of truth.
-          const successThreshold = version.successThreshold ?? 0.8
+          const successThreshold =
+            version.successThreshold ?? EVAL_AGGREGATE_DEFAULTS.successThreshold
           const isSuccessful =
             aggregateScore >= successThreshold && allRequiredPassed
 
@@ -532,13 +532,14 @@ export const computeAggregateScore = internalMutation({
         return e.score === 1
       } else {
         // subjective: check against threshold
-        const threshold = e.threshold ?? 0.5
+        const threshold = e.threshold ?? EVAL_DEFAULTS.subjectiveThreshold
         return e.score >= threshold
       }
     })
 
     // Determine overall success
-    const successThreshold = version.successThreshold ?? 0.8
+    const successThreshold =
+      version.successThreshold ?? EVAL_AGGREGATE_DEFAULTS.successThreshold
     const isSuccessful = aggregateScore >= successThreshold && allRequiredPassed
 
     await ctx.db.patch(versionId, {

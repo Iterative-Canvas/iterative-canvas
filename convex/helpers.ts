@@ -1,14 +1,20 @@
 import { MutationCtx, QueryCtx } from "./_generated/server"
 import { Id } from "./_generated/dataModel"
+import {
+  DEFAULT_EVALS_MODEL_ID,
+  DEFAULT_PROMPT_MODEL_ID,
+  DEFAULT_REFINE_MODEL_ID,
+  EVAL_DEFAULTS,
+} from "./lib"
 
 export async function getAppDefaultModelDbIds(ctx: QueryCtx) {
   const models = await ctx.db.query("aiGatewayModels").collect()
 
   // TODO: Probably shouldn't hardcode these in the code. Should maybe move
   // to a config table in the database. Or make the env vars.
-  const promptModel = models.find((m) => m.modelId === "openai/gpt-5")
-  const refineModel = models.find((m) => m.modelId === "openai/gpt-5")
-  const evalsModel = models.find((m) => m.modelId === "openai/gpt-4o")
+  const promptModel = models.find((m) => m.modelId === DEFAULT_PROMPT_MODEL_ID)
+  const refineModel = models.find((m) => m.modelId === DEFAULT_REFINE_MODEL_ID)
+  const evalsModel = models.find((m) => m.modelId === DEFAULT_EVALS_MODEL_ID)
 
   return {
     promptModelId: promptModel?._id,
@@ -40,9 +46,9 @@ export async function scaffoldNewCanvas(
     userPreferences?.defaultEvalsModelId || fallbackModels.evalsModelId
   const evalToInitialize = {
     modelId: evalsModelToInitialize,
-    isRequired: true,
-    weight: 1,
-    type: "pass_fail" as const,
+    isRequired: EVAL_DEFAULTS.isRequired,
+    weight: EVAL_DEFAULTS.weight,
+    type: EVAL_DEFAULTS.type,
   }
 
   const canvasId = await ctx.db.insert("canvases", {
